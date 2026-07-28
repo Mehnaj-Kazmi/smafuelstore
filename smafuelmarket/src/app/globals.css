@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+@theme {
+  /* SMA Store brand palette */
+  --color-sma-navy: #131a22;
+  --color-sma-navy-light: #232f3e;
+  --color-sma-navy-hover: #37475a;
+  --color-sma-accent: #ffa41c;
+  --color-sma-accent-dark: #f08804;
+  --color-sma-accent-soft: #febd69;
+  --color-sma-yellow: #ffd814;
+  --color-sma-yellow-dark: #f7ca00;
+  --color-sma-link: #007185;
+  --color-sma-link-hover: #c7511f;
+  --color-sma-price: #b12704;
+  --color-sma-deal: #cc0c39;
+  --color-sma-canvas: #eaeded;
+  --color-sma-border: #d5d9d9;
+  --color-sma-muted: #565959;
+
+  --font-sans: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/*
+ * These element defaults must live in @layer base. Tailwind v4 emits its
+ * utilities inside a cascade layer, and unlayered rules beat layered ones
+ * regardless of specificity — an unlayered `a { color: inherit }` would
+ * silently override every text-colour utility applied to a link.
+ */
+@layer base {
+  html,
+  body {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  body {
+    background: var(--color-sma-canvas);
+    color: #0f1111;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  /* Focus ring consistent with the storefront chrome */
+  :focus-visible {
+    outline: 2px solid var(--color-sma-accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+/* Horizontal product rails: scrollable, no visible scrollbar */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* The classic storefront "action" buttons */
+@layer components {
+  .btn-pill {
+    border-radius: 9999px;
+    padding: 0.4rem 1rem;
+    font-size: 0.8125rem;
+    color: #0f1111;
+    border: 1px solid var(--color-sma-border);
+    box-shadow: 0 2px 5px rgba(15, 17, 17, 0.15);
+    transition: background-color 0.15s ease;
+  }
+
+  .btn-buy {
+    background: var(--color-sma-accent);
+    border-color: var(--color-sma-accent-dark);
+  }
+  .btn-buy:hover {
+    background: var(--color-sma-accent-dark);
+  }
+
+  .btn-cart {
+    background: var(--color-sma-yellow);
+    border-color: var(--color-sma-yellow-dark);
+  }
+  .btn-cart:hover {
+    background: var(--color-sma-yellow-dark);
+  }
+}
