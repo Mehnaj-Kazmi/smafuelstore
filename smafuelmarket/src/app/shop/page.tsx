@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import ResultsBrowser from "@/components/ResultsBrowser";
 import { searchProducts, type DepartmentSlug, type SortKey } from "@/lib/catalog";
+import { getCatalogProducts } from "@/lib/catalog-source";
 
 export const metadata: Metadata = { title: "Shop all" };
 
@@ -13,7 +14,7 @@ export default async function ShopPage({ searchParams }: { searchParams: SearchP
   const department = (params.department as DepartmentSlug | undefined) ?? "all";
   const sort = (params.sort as SortKey | undefined) ?? "featured";
 
-  const pool = searchProducts(query, { department, sort });
+  const pool = searchProducts(query, { department, sort }, await getCatalogProducts());
 
   return (
     <Suspense>

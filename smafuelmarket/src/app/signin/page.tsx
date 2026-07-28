@@ -1,19 +1,39 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import SmaLogo from "@/components/SmaLogo";
 import { useAuth } from "@/lib/auth";
+import { intentMessage } from "@/lib/auth-gate";
 
 export default function SignInPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[70vh]" />}>
+      <SignInForm />
+    </Suspense>
+  );
+}
+
+function SignInForm() {
   const router = useRouter();
+  const params = useSearchParams();
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [step, setStep] = useState<"email" | "password">("email");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  /* Where the visitor was when the auth gate interrupted them. Only same-site
+     paths are honoured, so a crafted ?next= cannot bounce them off the site. */
+  const rawNext = params.get("next");
+  const next = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null;
+  const reason = intentMessage(params.get("intent"));
+
+  const registerHref = next
+    ? `/register?next=${encodeURIComponent(next)}`
+    : "/register";
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -35,7 +55,8 @@ export default function SignInPage() {
     setError("");
     login(email, password)
       .then((user) => {
-        router.push(user.role === "ADMIN" ? "/admin" : "/");
+        if (user.role === "ADMIN") return router.push("/admin");
+        router.push(next ?? "/");
       })
       .catch((err) => {
         setError(err instanceof Error ? err.message : "Sign in failed");
@@ -44,18 +65,24 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="flex min-h-[70vh] flex-col items-center bg-white px-4 py-6">
-      <Link href="/" className="mb-4" aria-label="SMA Store home">
-        <SmaLogo className="h-11 w-auto" dark />
+    <div className="flex min-h-[70vh] flex-col items-center px-4 py-10">
+      <Link href="/" className="mb-6" aria-label="SMA Fuel & Market home">
+        <SmaLogo className="h-12 w-auto" />
       </Link>
 
-      <div className="w-full max-w-[350px] rounded-lg border border-sma-border p-5">
-        <h1 className="mb-3 text-[28px] font-medium leading-8">Sign in</h1>
+      {reason && (
+        <p className="anim-rise mb-4 w-full max-w-[380px] rounded-xl border border-brand-green/35 bg-brand-green/10 px-4 py-3 text-center text-[13px] font-semibold text-[#7ef0ac]">
+          {reason}
+        </p>
+      )}
+
+      <div className="card w-full max-w-[380px] p-6">
+        <h1 className="mb-5 text-[28px] font-extrabold leading-8 text-white">Sign in</h1>
 
         <form onSubmit={handleSubmit} noValidate>
           {step === "email" ? (
             <>
-              <label htmlFor="email" className="mb-1 block text-[13px] font-bold">
+              <label htmlFor="email" className="mb-1.5 block text-[13px] font-bold text-ink-soft">
                 Email or mobile phone number
               </label>
               <input
@@ -65,12 +92,12 @@ export default function SignInPage() {
                 autoComplete="email"
                 onChange={(e) => setEmail(e.target.value)}
                 aria-invalid={Boolean(error)}
-                className="w-full rounded-md border border-sma-border px-3 py-1.5 text-sm outline-none focus:border-sma-accent"
+                className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2.5 text-sm text-white outline-none transition-colors focus:border-brand-green"
               />
             </>
           ) : (
             <>
-              <p className="mb-3 text-[13px]">
+              <p className="mb-3 text-[13px] text-ink-soft">
                 {email}{" "}
                 <button
                   type="button"
@@ -78,12 +105,12 @@ export default function SignInPage() {
                     setStep("email");
                     setError("");
                   }}
-                  className="text-sma-link hover:text-sma-link-hover hover:underline"
+                  className="link-draw font-bold text-brand-green"
                 >
                   Change
                 </button>
               </p>
-              <label htmlFor="password" className="mb-1 block text-[13px] font-bold">
+              <label htmlFor="password" className="mb-1.5 block text-[13px] font-bold text-ink-soft">
                 Password
               </label>
               <input
@@ -93,37 +120,40 @@ export default function SignInPage() {
                 autoComplete="current-password"
                 onChange={(e) => setPassword(e.target.value)}
                 aria-invalid={Boolean(error)}
-                className="w-full rounded-md border border-sma-border px-3 py-1.5 text-sm outline-none focus:border-sma-accent"
+                className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2.5 text-sm text-white outline-none transition-colors focus:border-brand-green"
               />
             </>
           )}
 
           {error && (
-            <p role="alert" className="mt-2 text-[13px] text-sma-deal">
+            <p role="alert" className="mt-2.5 text-[13px] font-semibold text-sma-deal">
               {error}
             </p>
           )}
 
-          <button type="submit" disabled={submitting} className="btn-pill btn-buy mt-4 w-full font-medium disabled:opacity-60">
+          <button
+            type="submit"
+            disabled={submitting}
+            className="btn-pill btn-cart mt-5 w-full py-3 disabled:opacity-60"
+          >
             {submitting ? "Signing in…" : step === "email" ? "Continue" : "Sign in"}
           </button>
         </form>
 
-        <p className="mt-4 text-xs leading-4 text-sma-muted">
-          By continuing, you agree to SMA Store&apos;s Conditions of Use and Privacy Notice.
+        <p className="mt-5 text-xs leading-5 text-ink-faint">
+          By continuing, you agree to SMA Fuel &amp; Market&apos;s Conditions of Use and Privacy Notice.
         </p>
       </div>
 
-      <div className="mt-6 w-full max-w-[350px]">
-        <div className="relative mb-4 text-center">
-          <span className="absolute inset-x-0 top-1/2 border-t border-sma-border" />
-          <span className="relative bg-white px-3 text-xs text-sma-muted">New to SMA Store?</span>
+      <div className="mt-8 w-full max-w-[380px]">
+        <div className="relative mb-5 text-center">
+          <span className="absolute inset-x-0 top-1/2 border-t border-line" />
+          <span className="relative bg-black px-3 text-xs font-semibold text-ink-faint">
+            New to SMA Fuel &amp; Market?
+          </span>
         </div>
-        <Link
-          href="/register"
-          className="btn-pill block bg-[#f0f2f2] text-center font-medium hover:bg-[#e3e6e6]"
-        >
-          Create your SMA Store account
+        <Link href={registerHref} className="btn-pill btn-ghost block w-full py-3 text-center">
+          Create your account
         </Link>
       </div>
     </div>

@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCart } from "@/lib/cart";
 import { useDelivery } from "@/lib/delivery";
+import { useAuth } from "@/lib/auth";
 import { money } from "@/lib/format";
 import { applyCoupon, type Coupon } from "@/lib/deals";
 import ProductArt from "@/components/ProductArt";
@@ -18,6 +19,15 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { items, subtotal, count, placeOrder, hydrated, hasAgeRestricted } = useCart();
   const { canOrder, store } = useDelivery();
+  const { user, hydrated: authReady } = useAuth();
+
+  /* The cart button already gates this, but the route has to hold the line on
+     its own — otherwise a bookmark or a pasted URL walks straight past it. */
+  useEffect(() => {
+    if (authReady && !user) {
+      router.replace("/signin?next=%2Fcheckout&intent=checkout");
+    }
+  }, [authReady, user, router]);
 
   const [payment, setPayment] = useState("card");
   const [ageConfirmed, setAgeConfirmed] = useState(false);
@@ -34,8 +44,8 @@ export default function CheckoutPage() {
   const tax = discounted * TAX_RATE;
   const total = discounted + deliveryFee + tax;
 
-  if (!hydrated) {
-    return <div className="mx-auto max-w-[1100px] px-4 py-10 text-sm text-sma-muted">Loading checkout…</div>;
+  if (!hydrated || !authReady || !user) {
+    return <div className="mx-auto max-w-[1100px] px-4 py-10 text-sm text-ink-faint">Loading checkout…</div>;
   }
 
   if (!canOrder) {
@@ -98,7 +108,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-surface">
       <div className="border-b border-sma-border">
         <div className="mx-auto flex max-w-[1100px] items-center justify-between gap-4 px-4 py-3">
           <Link href="/" aria-label="SMA Fuel & Market home">

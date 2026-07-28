@@ -16,7 +16,7 @@ export default function ContactPage() {
 
       <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
         {stores.map((s) => (
-          <section key={s.id} className="bg-white p-6">
+          <section key={s.id} className="bg-surface p-6">
             <h2 className="text-lg font-bold">{s.name}</h2>
             <dl className="mt-3 space-y-2 text-[13px]">
               <div className="flex gap-3"><dt className="w-24 shrink-0 text-sma-muted">Address</dt><dd>{s.address}, {s.city}</dd></div>
@@ -38,7 +38,7 @@ export default function ContactPage() {
           </section>
         ))}
 
-        <section className="bg-white p-6">
+        <section className="bg-surface p-6">
           <h2 className="text-lg font-bold">Send us a message</h2>
           <p className="mt-1 text-[13px] text-sma-muted">We answer within a couple of hours, day or night.</p>
           <form className="mt-4 space-y-3">

@@ -13,7 +13,7 @@ const saved = [
 export default function AddressesPage() {
   return (
     <div className="mx-auto max-w-[1000px] px-4 py-6">
-      <div className="bg-white p-5">
+      <div className="bg-surface p-5">
         <h1 className="text-2xl font-bold">Your addresses</h1>
         <p className="mt-1 text-sm text-sma-muted">
           Only addresses inside the {primaryStore.radiusMiles}-mile delivery area can be used at checkout.
@@ -22,7 +22,7 @@ export default function AddressesPage() {
 
       <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {saved.map((a) => (
-          <article key={a.label} className={`flex flex-col rounded-lg border bg-white p-5 ${a.isDefault ? "border-sma-accent" : "border-sma-border"}`}>
+          <article key={a.label} className={`flex flex-col rounded-lg border bg-surface p-5 ${a.isDefault ? "border-sma-accent" : "border-sma-border"}`}>
             {a.isDefault && <span className="mb-2 self-start rounded bg-sma-navy-light px-2 py-0.5 text-[11px] font-bold text-white">Default</span>}
             <h2 className="text-base font-bold">{a.label}</h2>
             <p className="mt-1 text-[13px] leading-5 text-sma-muted">{a.line1}<br />{a.city} {a.postcode}</p>
@@ -36,7 +36,7 @@ export default function AddressesPage() {
           </article>
         ))}
 
-        <Link href="/addresses" className="flex min-h-[180px] items-center justify-center rounded-lg border-2 border-dashed border-sma-border bg-white p-5 text-center text-sm font-medium text-sma-muted hover:border-sma-accent hover:text-sma-link-hover">
+        <Link href="/addresses" className="flex min-h-[180px] items-center justify-center rounded-lg border-2 border-dashed border-sma-border bg-surface p-5 text-center text-sm font-medium text-sma-muted hover:border-sma-accent hover:text-sma-link-hover">
           + Add a new address
         </Link>
       </div>

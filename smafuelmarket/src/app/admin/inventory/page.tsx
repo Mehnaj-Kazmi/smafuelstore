@@ -54,7 +54,7 @@ export default function InventoryPage() {
                 <td className="py-2 pr-4 font-mono text-xs text-sma-muted">{p.barcode}</td>
                 <td className="py-2 pr-4 tabular-nums">{p.stock}</td>
                 <td className="w-[20%] py-2 pr-4">
-                  <Bar value={p.stock} max={maxStock} tone={state === "out" ? "#b12704" : state === "low" ? "#c45500" : "#067d62"} />
+                  <Bar value={p.stock} max={maxStock} tone={state === "out" ? "#ff4d55" : state === "low" ? "#f37021" : "var(--color-brand-green)"} />
                 </td>
                 <td className="py-2">
                   {state === "out" ? <Pill tone="bad">Out</Pill> : state === "low" ? <Pill tone="warn">Low</Pill> : <Pill tone="good">OK</Pill>}

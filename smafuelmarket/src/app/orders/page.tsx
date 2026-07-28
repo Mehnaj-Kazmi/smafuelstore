@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useCart } from "@/lib/cart";
 import { orderFlow, orderStatusLabel, type Order } from "@/lib/orders";
 import { money } from "@/lib/format";
-import { getProduct } from "@/lib/catalog";
+import { useCatalog } from "@/lib/catalog-context";
 import ProductArt from "@/components/ProductArt";
 
 export default function OrdersPage() {
@@ -29,7 +29,7 @@ function OrdersView() {
   return (
     <div className="mx-auto max-w-[1100px] px-4 py-5">
       {justPlaced && (
-        <div className="mb-5 rounded-lg border border-[#007600] bg-white p-5">
+        <div className="mb-5 rounded-lg border border-[#007600] bg-surface p-5">
           <h1 className="text-2xl font-bold text-[#007600]">Order confirmed</h1>
           <p className="mt-1 text-sm">
             Order <span className="font-bold">{justPlaced}</span> is being prepared. You&apos;ll get a notification
@@ -42,7 +42,7 @@ function OrdersView() {
       <h2 className="mb-4 text-[28px] font-medium">Your orders</h2>
 
       {orders.length === 0 ? (
-        <div className="bg-white p-10 text-center">
+        <div className="bg-surface p-10 text-center">
           <p className="text-lg font-bold">No orders yet</p>
           <p className="mt-1 text-sm text-sma-muted">Orders you place will show up here with live tracking.</p>
           <Link href="/shop" className="btn-pill btn-cart mt-4 inline-block font-medium">Start shopping</Link>
@@ -57,10 +57,12 @@ function OrdersView() {
 }
 
 function OrderCard({ order }: { order: Order }) {
+  const { getProduct } = useCatalog();
+
   const stepIndex = orderFlow.indexOf(order.status);
 
   return (
-    <li className="rounded-lg border border-sma-border bg-white">
+    <li className="rounded-lg border border-sma-border bg-surface">
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-t-lg border-b border-sma-border bg-[#f0f2f2] px-5 py-3 text-xs">
         <div className="flex flex-wrap gap-6">
           <span>
@@ -123,7 +125,7 @@ function OrderCard({ order }: { order: Order }) {
                   <p className="mt-0.5 text-xs text-sma-muted">
                     {product.unit} · Qty {line.quantity} · {money(product.price)} each
                   </p>
-                  <Link href={`/product/${product.id}`} className="btn-pill mt-2 inline-block bg-white text-[13px] font-medium hover:bg-gray-50">
+                  <Link href={`/product/${product.id}`} className="btn-pill mt-2 inline-block bg-surface text-[13px] font-medium hover:bg-gray-50">
                     Buy it again
                   </Link>
                 </div>

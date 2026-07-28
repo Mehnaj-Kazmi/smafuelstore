@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/lib/cart";
 import { useDelivery } from "@/lib/delivery";
+import { useAuthGate } from "@/lib/auth-gate";
 import { money } from "@/lib/format";
-import { products, stockState } from "@/lib/catalog";
+import { stockState } from "@/lib/catalog";
+import { useCatalog } from "@/lib/catalog-context";
 import ProductArt from "@/components/ProductArt";
 import ProductCard from "@/components/ProductCard";
 
@@ -15,6 +17,8 @@ export default function CartPage() {
   const router = useRouter();
   const { items, subtotal, savings, count, setQuantity, remove, clear, hydrated, toggleWish, hasAgeRestricted } = useCart();
   const { canOrder, store } = useDelivery();
+  const { requireAuth } = useAuthGate();
+  const { products } = useCatalog();
 
   if (!hydrated) {
     return <div className="mx-auto max-w-[1500px] px-3 py-10 text-sm text-sma-muted">Loading your cart…</div>;
@@ -24,7 +28,7 @@ export default function CartPage() {
     const suggestions = products.filter((p) => p.tags.includes("impulse") || p.tags.includes("essential")).slice(0, 6);
     return (
       <div className="mx-auto max-w-[1500px] px-3 py-4">
-        <div className="flex flex-col items-center gap-4 bg-white p-10 text-center sm:flex-row sm:text-left">
+        <div className="flex flex-col items-center gap-4 bg-surface p-10 text-center sm:flex-row sm:text-left">
           <ProductArt art="chips" hue={45} className="h-40 w-40 shrink-0" />
           <div>
             <h1 className="text-2xl font-bold">Your basket is empty</h1>
@@ -33,12 +37,12 @@ export default function CartPage() {
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
               <Link href="/deals" className="btn-pill btn-cart inline-block font-medium">Shop today&apos;s deals</Link>
-              <Link href="/shop" className="btn-pill inline-block bg-white font-medium hover:bg-gray-50">Browse the store</Link>
+              <Link href="/shop" className="btn-pill inline-block bg-surface font-medium hover:bg-gray-50">Browse the store</Link>
             </div>
           </div>
         </div>
 
-        <section className="mt-4 bg-white p-5">
+        <section className="mt-4 bg-surface p-5">
           <h2 className="mb-4 text-xl font-bold">Popular right now</h2>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
             {suggestions.map((p) => <ProductCard key={p.id} product={p} compact />)}
@@ -53,7 +57,7 @@ export default function CartPage() {
   return (
     <div className="mx-auto max-w-[1500px] px-3 py-4">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="bg-white p-5">
+        <div className="bg-surface p-5">
           <div className="flex items-baseline justify-between">
             <h1 className="text-2xl font-medium sm:text-[28px]">Your basket</h1>
             <button type="button" onClick={clear} className="text-[13px] text-sma-link hover:text-sma-link-hover hover:underline">
@@ -134,7 +138,7 @@ export default function CartPage() {
         </div>
 
         <aside className="lg:sticky lg:top-[110px] lg:self-start">
-          <div className="bg-white p-5">
+          <div className="bg-surface p-5">
             {!canOrder ? (
               <p className="mb-3 rounded-md border border-[#f0d4a3] bg-[#fdf3e3] p-3 text-[13px] leading-5 text-[#7a4a05]">
                 <strong>Checkout is unavailable.</strong> We only deliver within {store.radiusMiles} miles of{" "}
@@ -162,7 +166,13 @@ export default function CartPage() {
 
             <button
               type="button"
-              onClick={() => router.push("/checkout")}
+              onClick={() => {
+                /* Checkout needs an account for the order to belong to, so a
+                   signed-out basket is routed through sign in and returned
+                   straight to /checkout rather than to the cart. */
+                if (!requireAuth("checkout", "/checkout")) return;
+                router.push("/checkout");
+              }}
               disabled={!canOrder}
               className="btn-pill btn-buy mt-4 w-full font-medium disabled:cursor-not-allowed disabled:opacity-45"
             >

@@ -51,7 +51,7 @@ export default function FaqsPage() {
       </div>
 
       {groups.map((g) => (
-        <section key={g.title} className="mt-5 bg-white p-6">
+        <section key={g.title} className="mt-5 bg-surface p-6">
           <h2 className="mb-3 text-xl font-bold">{g.title}</h2>
           <div className="divide-y divide-sma-border">
             {g.faqs.map((f) => (

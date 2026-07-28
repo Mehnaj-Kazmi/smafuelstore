@@ -1,34 +1,57 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { departments } from "@/lib/catalog";
 import { primaryStore } from "@/lib/store-location";
 import SmaLogo from "./SmaLogo";
 import CartCount from "./CartCount";
+import WishCount from "./WishCount";
 
 const navLinks = [
-  { label: "Shop All", href: "/shop" },
-  { label: "Daily Deals", href: "/deals" },
-  { label: "Departments", href: "/departments" },
-  { label: "Hot Food", href: "/department/bakery" },
+  { label: "Food", href: "/department/bakery" },
   { label: "Drinks", href: "/department/drinks" },
+  { label: "Deals", href: "/deals" },
+  { label: "Departments", href: "/departments" },
   { label: "Automotive", href: "/department/automotive" },
-  { label: "Help", href: "/faqs" },
+  { label: "Shop All", href: "/shop" },
 ];
 
 export default function Header() {
   const router = useRouter();
-  const params = useSearchParams();
+  const pathname = usePathname();
 
   const [query, setQuery] = useState("");
   const [scope, setScope] = useState("all");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
+  /*
+   * The search box is prefilled from the URL by reading location directly
+   * rather than with useSearchParams().
+   *
+   * useSearchParams() opts its whole subtree out of static prerendering, which
+   * forced the entire header into a Suspense boundary that Next defers on every
+   * statically generated page. That boundary hydrates separately and at lower
+   * priority than the main tree, so the header could sit un-hydrated — dead
+   * burger menu, dead search, and cart and wishlist badges frozen at zero —
+   * on the home page and every product page, while working fine on the one
+   * dynamic route. Reading location after mount keeps the header in the main
+   * hydration pass on every route.
+   */
   useEffect(() => {
-    setQuery(params.get("q") ?? "");
-  }, [params]);
+    setQuery(new URLSearchParams(window.location.search).get("q") ?? "");
+  }, [pathname]);
+
+  /* Solid black at rest, blurred and hairlined once the page moves. */
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -51,117 +74,197 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-40">
-      <div className="bg-sma-navy text-white">
-        <div className="mx-auto flex max-w-[1500px] items-center gap-1 px-2 py-1.5 sm:gap-2">
+      <div
+        className={`transition-colors duration-300 ${
+          scrolled
+            ? "border-b border-line bg-black/85 backdrop-blur-xl"
+            : "border-b border-transparent bg-black"
+        }`}
+      >
+        <div className="mx-auto flex max-w-[1500px] items-center gap-2 px-3 py-3 lg:px-6">
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Open menu"
+            className="-ml-1 shrink-0 rounded-full p-2 text-white transition hover:bg-white/10 lg:hidden"
+          >
+            <BurgerIcon />
+          </button>
+
           <Link
             href="/"
-            className="shrink-0 rounded-sm border border-transparent px-2 py-1.5 hover:border-white"
+            className="shrink-0 rounded-md px-1 py-1 transition-transform duration-300 hover:scale-[1.04]"
             aria-label="SMA Fuel & Market home"
           >
             <SmaLogo className="h-9 w-auto" />
           </Link>
 
-          <Link
-            href="/contact"
-            className="hidden shrink-0 items-center gap-1 rounded-sm border border-transparent px-2 py-1.5 hover:border-white lg:flex"
-          >
-            <PinIcon />
-            <span className="leading-tight">
-              <span className="block text-[11px] text-gray-300">Delivering from</span>
-              <span className="block text-[13px] font-bold">{primaryStore.city}</span>
-            </span>
-          </Link>
-
-          <form onSubmit={submitSearch} className="flex min-w-0 flex-1 items-stretch" role="search">
-            <label htmlFor="scope" className="sr-only">Search department</label>
-            <select
-              id="scope"
-              value={scope}
-              onChange={(e) => setScope(e.target.value)}
-              className="hidden w-[52px] shrink-0 cursor-pointer appearance-none rounded-l-md border-r border-gray-300 bg-[#e6e6e6] bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2010%206%22%3E%3Cpath%20d%3D%22M0%200h10L5%206z%22%20fill%3D%22%23555%22/%3E%3C/svg%3E')] bg-[length:8px] bg-[position:right_6px_center] bg-no-repeat pl-2 pr-4 text-[12px] text-gray-800 outline-none sm:block"
-            >
-              <option value="all">All</option>
-              {departments.map((d) => (
-                <option key={d.slug} value={d.slug}>{d.name}</option>
-              ))}
-            </select>
-            <label htmlFor="q" className="sr-only">Search the store</label>
-            <input
-              id="q"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search snacks, drinks, oil…"
-              className="w-full min-w-0 rounded-l-md bg-white px-3 py-2 text-sm text-black outline-none sm:rounded-none"
-            />
-            <button type="submit" aria-label="Search" className="shrink-0 rounded-r-md bg-sma-accent-soft px-3 text-black transition-colors hover:bg-sma-accent">
-              <SearchIcon />
-            </button>
-          </form>
-
-          <Link href="/signin" className="hidden shrink-0 rounded-sm border border-transparent px-2 py-1.5 leading-tight hover:border-white md:block">
-            <span className="block text-[11px]">Hello, sign in</span>
-            <span className="block text-[13px] font-bold">Account</span>
-          </Link>
-
-          <Link href="/orders" className="hidden shrink-0 rounded-sm border border-transparent px-2 py-1.5 leading-tight hover:border-white md:block">
-            <span className="block text-[11px]">Returns</span>
-            <span className="block text-[13px] font-bold">&amp; Orders</span>
-          </Link>
-
-          <CartCount>
-            {(count) => (
+          <nav className="ml-4 hidden items-center gap-7 lg:flex">
+            {navLinks.map((link) => (
               <Link
-                href="/cart"
-                className="flex shrink-0 items-end gap-1 rounded-sm border border-transparent px-2 py-1.5 hover:border-white"
-                aria-label={`Cart, ${count} ${count === 1 ? "item" : "items"}`}
+                key={link.href}
+                href={link.href}
+                className="link-draw whitespace-nowrap text-[15px] font-bold tracking-tight text-white transition-colors hover:text-brand-green"
               >
-                <span className="relative">
-                  <CartIcon />
-                  <span className="absolute -top-1 left-1/2 -translate-x-1/2 text-[15px] font-bold text-sma-accent">
-                    {count}
-                  </span>
-                </span>
-                <span className="hidden text-[13px] font-bold sm:inline">Cart</span>
+                {link.label}
               </Link>
-            )}
-          </CartCount>
-        </div>
-      </div>
+            ))}
+          </nav>
 
-      <div className="bg-sma-navy-light text-white">
-        <div className="mx-auto flex max-w-[1500px] items-center gap-1 overflow-x-auto px-2 py-1 text-[13px] no-scrollbar">
-          <button
-            type="button"
-            onClick={() => setMenuOpen(true)}
-            className="flex shrink-0 items-center gap-1.5 rounded-sm border border-transparent px-2 py-1 font-bold hover:border-white"
-          >
-            <BurgerIcon /> All
-          </button>
-          {navLinks.map((link) => (
-            <Link key={link.href} href={link.href} className="shrink-0 whitespace-nowrap rounded-sm border border-transparent px-2 py-1 hover:border-white">
-              {link.label}
+          <div className="ml-auto flex items-center gap-1 sm:gap-2">
+            {/* Search grows when focused, so it stays out of the way at rest. */}
+            <form
+              onSubmit={submitSearch}
+              role="search"
+              className={`flex items-stretch overflow-hidden rounded-full border bg-surface transition-[width,border-color] duration-300 ${
+                searchFocused
+                  ? "w-[min(56vw,400px)] border-brand-green"
+                  : "w-[42px] border-line sm:w-[210px] lg:w-[240px]"
+              }`}
+            >
+              <label htmlFor="q" className="sr-only">
+                Search the store
+              </label>
+              <input
+                id="q"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setSearchFocused(false)}
+                placeholder="Search snacks, drinks, oil…"
+                className={`min-w-0 flex-1 bg-transparent px-4 text-sm text-white outline-none placeholder:text-ink-faint ${
+                  searchFocused ? "" : "hidden sm:block"
+                }`}
+              />
+              <label htmlFor="scope" className="sr-only">
+                Search department
+              </label>
+              <select
+                id="scope"
+                value={scope}
+                onChange={(e) => setScope(e.target.value)}
+                className={`w-[46px] shrink-0 cursor-pointer appearance-none border-l border-line bg-transparent bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2010%206%22%3E%3Cpath%20d%3D%22M0%200h10L5%206z%22%20fill%3D%22%23b8b8c0%22/%3E%3C/svg%3E')] bg-[length:8px] bg-[position:right_8px_center] bg-no-repeat pl-2 text-[12px] text-ink-soft outline-none ${
+                  searchFocused ? "block" : "hidden lg:block"
+                }`}
+              >
+                <option value="all">All</option>
+                {departments.map((d) => (
+                  <option key={d.slug} value={d.slug}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="submit"
+                aria-label="Search"
+                className="shrink-0 px-3 text-white transition-colors hover:text-brand-green"
+              >
+                <SearchIcon />
+              </button>
+            </form>
+
+            <Link
+              href="/contact"
+              className="hidden shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-white transition hover:bg-white/10 xl:flex"
+            >
+              <span className="text-brand-green">
+                <PinIcon />
+              </span>
+              <span className="link-draw text-[13px] font-bold">{primaryStore.city}</span>
             </Link>
-          ))}
+
+            <Link
+              href="/signin"
+              aria-label="Your account"
+              className="shrink-0 rounded-full p-2 text-white transition hover:bg-white/10"
+            >
+              <UserIcon />
+            </Link>
+
+            {/* Saved items need a permanent home in the chrome — without it a
+                heart click has nowhere to lead back to. */}
+            <WishCount>
+              {(count) => (
+                <Link
+                  href="/wishlist"
+                  className="relative shrink-0 rounded-full p-2 text-white transition hover:bg-white/10"
+                  aria-label={`Saved items, ${count} ${count === 1 ? "item" : "items"}`}
+                >
+                  <HeartIcon filled={count > 0} />
+                  {count > 0 && (
+                    <span className="absolute right-0 top-0 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-sma-deal px-1 text-[11px] font-extrabold text-white">
+                      {count}
+                    </span>
+                  )}
+                </Link>
+              )}
+            </WishCount>
+
+            <Link
+              href="/orders"
+              aria-label="Your orders"
+              className="hidden shrink-0 rounded-full p-2 text-white transition hover:bg-white/10 md:block"
+            >
+              <BoxIcon />
+            </Link>
+
+            <CartCount>
+              {(count) => (
+                <Link
+                  href="/cart"
+                  className="relative shrink-0 rounded-full p-2 text-white transition hover:bg-white/10"
+                  aria-label={`Cart, ${count} ${count === 1 ? "item" : "items"}`}
+                >
+                  <CartIcon />
+                  {count > 0 && (
+                    <span className="pulse-ring absolute right-0 top-0 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-brand-green px-1 text-[11px] font-extrabold text-black">
+                      {count}
+                    </span>
+                  )}
+                </Link>
+              )}
+            </CartCount>
+          </div>
         </div>
       </div>
 
       {menuOpen && (
         <div className="fixed inset-0 z-50">
-          <button type="button" aria-label="Close menu" onClick={() => setMenuOpen(false)} className="absolute inset-0 bg-black/60" />
-          <nav className="absolute inset-y-0 left-0 flex w-[86%] max-w-[365px] flex-col overflow-y-auto bg-white">
-            <div className="flex items-center gap-3 bg-sma-navy-light px-6 py-3 text-white">
-              <UserIcon />
-              <span className="text-lg font-bold">Hello, sign in</span>
+          <button
+            type="button"
+            aria-label="Close menu"
+            onClick={() => setMenuOpen(false)}
+            className="anim-fade absolute inset-0 bg-black/70 backdrop-blur-sm"
+          />
+          <nav className="anim-rise absolute inset-y-0 left-0 flex w-[86%] max-w-[365px] flex-col overflow-y-auto border-r border-line bg-surface">
+            <div className="flex items-center justify-between gap-3 border-b border-line px-6 py-4 text-white">
+              <span className="flex items-center gap-3">
+                <UserIcon />
+                <span className="text-lg font-bold">Hello, sign in</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setMenuOpen(false)}
+                aria-label="Close menu"
+                className="rounded-full p-1.5 transition hover:bg-white/10"
+              >
+                <CloseIcon />
+              </button>
             </div>
             <div className="px-2 py-3">
-              <p className="px-4 pb-1 pt-2 text-lg font-bold">Shop by department</p>
+              <p className="eyebrow px-4 pb-2 pt-2">Shop by department</p>
               {departments.map((d) => (
-                <Link key={d.slug} href={`/department/${d.slug}`} onClick={() => setMenuOpen(false)} className="block px-4 py-2.5 text-sm hover:bg-gray-100">
+                <Link
+                  key={d.slug}
+                  href={`/department/${d.slug}`}
+                  onClick={() => setMenuOpen(false)}
+                  className="block rounded-lg px-4 py-2.5 text-sm font-medium text-white transition hover:bg-surface-2"
+                >
                   {d.name}
                 </Link>
               ))}
-              <hr className="my-2 border-gray-200" />
-              <p className="px-4 pb-1 pt-2 text-lg font-bold">Your account</p>
+              <hr className="my-3 border-line" />
+              <p className="eyebrow px-4 pb-2 pt-2">Your account</p>
               {[
                 { label: "Your orders", href: "/orders" },
                 { label: "Wishlist", href: "/wishlist" },
@@ -170,7 +273,12 @@ export default function Header() {
                 { label: "Settings", href: "/settings" },
                 { label: "Admin dashboard", href: "/admin" },
               ].map((l) => (
-                <Link key={l.href} href={l.href} onClick={() => setMenuOpen(false)} className="block px-4 py-2.5 text-sm hover:bg-gray-100">
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  onClick={() => setMenuOpen(false)}
+                  className="block rounded-lg px-4 py-2.5 text-sm font-medium text-white transition hover:bg-surface-2"
+                >
                   {l.label}
                 </Link>
               ))}
@@ -184,7 +292,7 @@ export default function Header() {
 
 function SearchIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
       <circle cx="11" cy="11" r="7" />
       <path d="m16.5 16.5 4.5 4.5" strokeLinecap="round" />
     </svg>
@@ -193,7 +301,7 @@ function SearchIcon() {
 
 function CartIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-7 w-7" fill="currentColor" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor" aria-hidden="true">
       <path d="M7 18a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 18Zm10 0a2 2 0 1 0 .001 4.001A2 2 0 0 0 17 18ZM2.2 3a1 1 0 0 0 0 2h1.6l2.6 9.6A2.6 2.6 0 0 0 9 16.5h8.6a1 1 0 0 0 0-2H9a.6.6 0 0 1-.6-.45L8.2 13h9.9a2 2 0 0 0 1.94-1.5l1.5-5.5A1 1 0 0 0 20.6 4.7H6.3l-.4-1.5A1 1 0 0 0 4.9 3H2.2Z" />
     </svg>
   );
@@ -209,16 +317,49 @@ function PinIcon() {
 
 function BurgerIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true">
       <path d="M3 6h18M3 12h18M3 18h18" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true">
+      <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function HeartIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-6 w-6 transition-colors"
+      fill={filled ? "#ee1c25" : "none"}
+      stroke={filled ? "#ee1c25" : "currentColor"}
+      strokeWidth="1.9"
+      aria-hidden="true"
+    >
+      <path d="M12 20.3 4.6 13a4.8 4.8 0 0 1 6.8-6.8l.6.6.6-.6A4.8 4.8 0 1 1 19.4 13z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function BoxIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+      <path d="M3 8.5 12 4l9 4.5v7L12 20l-9-4.5v-7Z" strokeLinejoin="round" />
+      <path d="m3 8.5 9 4.5 9-4.5M12 13v7" strokeLinejoin="round" />
     </svg>
   );
 }
 
 function UserIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-7 w-7" fill="currentColor" aria-hidden="true">
-      <path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4 0-9 2-9 5v1h18v-1c0-3-5-5-9-5Z" />
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+      <circle cx="12" cy="8.5" r="4" />
+      <path d="M4 20c0-3.6 3.6-6 8-6s8 2.4 8 6" strokeLinecap="round" />
     </svg>
   );
 }

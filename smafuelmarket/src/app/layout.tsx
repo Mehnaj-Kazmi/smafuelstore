@@ -1,12 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { Suspense } from "react";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import DeliveryBanner from "@/components/DeliveryBanner";
+import IntroSplash from "@/components/IntroSplash";
+import LocationPrompt from "@/components/LocationPrompt";
 import { CartProvider } from "@/lib/cart";
 import { DeliveryProvider } from "@/lib/delivery";
 import { AuthProvider } from "@/lib/auth";
+import { CatalogProvider } from "@/lib/catalog-context";
+import { getCatalogProducts } from "@/lib/catalog-source";
 
 export const metadata: Metadata = {
   title: {
@@ -20,26 +23,34 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#131a22",
+  themeColor: "#000000",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  /* Fetched once here and shared with every client component below, so the
+     cart and the server-rendered pages agree on the same catalogue. */
+  const catalog = await getCatalogProducts();
+
   return (
     <html lang="en">
       <body id="top">
+        <CatalogProvider products={catalog}>
         <AuthProvider>
           <DeliveryProvider>
             <CartProvider>
-              {/* Header reads search params, so it renders inside a Suspense boundary. */}
-              <Suspense fallback={<div className="h-[92px] bg-sma-navy" />}>
-                <Header />
-              </Suspense>
+              {/* No Suspense boundary here on purpose: the header must hydrate
+                  in the main pass so its cart and wishlist badges are live on
+                  statically prerendered pages. See the note in Header.tsx. */}
+              <Header />
               <DeliveryBanner />
               <main className="min-h-[60vh]">{children}</main>
               <Footer />
+              <IntroSplash />
+              <LocationPrompt />
             </CartProvider>
           </DeliveryProvider>
         </AuthProvider>
+        </CatalogProvider>
       </body>
     </html>
   );

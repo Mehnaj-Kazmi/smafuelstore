@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Panel, Pill, Stat, Table } from "@/components/admin/Ui";
 import { money } from "@/lib/format";
 import { api } from "@/lib/api";
+import ImageUploadField from "@/components/admin/ImageUploadField";
 
 type Department = { slug: string; name: string };
 type Category = { slug: string; name: string; departmentSlug: string };
@@ -24,6 +25,7 @@ type ApiProduct = {
   listPrice: string | null;
   stock: number;
   lowStockAt: number;
+  imageUrl?: string | null;
   art: string;
   hue: number;
   ageRestricted: boolean;
@@ -44,6 +46,7 @@ type FormState = {
   listPrice: string;
   stock: string;
   lowStockAt: string;
+  imageUrl: string;
   art: string;
   hue: string;
   ageRestricted: boolean;
@@ -54,7 +57,7 @@ type FormState = {
 
 const emptyForm: FormState = {
   sku: "", barcode: "", title: "", brand: "", departmentSlug: "", categorySlug: "",
-  unit: "", price: "", listPrice: "", stock: "0", lowStockAt: "0", art: "chips", hue: "200",
+  unit: "", price: "", listPrice: "", stock: "0", lowStockAt: "0", imageUrl: "", art: "chips", hue: "200",
   ageRestricted: false, tags: "", bullets: "", description: "",
 };
 
@@ -117,6 +120,7 @@ export default function AdminProductsPage() {
       departmentSlug: p.departmentSlug, categorySlug: p.categorySlug, unit: p.unit,
       price: String(p.price), listPrice: p.listPrice ? String(p.listPrice) : "",
       stock: String(p.stock), lowStockAt: String(p.lowStockAt),
+      imageUrl: p.imageUrl ?? "",
       art: p.art, hue: String(p.hue), ageRestricted: p.ageRestricted,
       tags: p.tags.join(", "), bullets: p.bullets.join("\n"), description: p.description,
     });
@@ -144,6 +148,7 @@ export default function AdminProductsPage() {
       departmentSlug: form.departmentSlug, categorySlug: form.categorySlug, unit: form.unit,
       price: Number(form.price), listPrice: form.listPrice ? Number(form.listPrice) : undefined,
       stock: Number(form.stock), lowStockAt: Number(form.lowStockAt),
+      imageUrl: form.imageUrl || undefined,
       art: form.art, hue: Number(form.hue), ageRestricted: form.ageRestricted,
       tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
       bullets: form.bullets.split("\n").map((b) => b.trim()).filter(Boolean),
@@ -234,7 +239,7 @@ export default function AdminProductsPage() {
 
       {modal && (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 py-8">
-          <div className="w-full max-w-2xl rounded-lg bg-white p-5">
+          <div className="w-full max-w-2xl rounded-lg bg-surface p-5">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">{modal.mode === "create" ? "Add product" : "Edit product"}</h2>
               <button type="button" onClick={() => setModal(null)} className="text-sm text-sma-muted hover:text-sma-link">Close</button>
@@ -265,6 +270,12 @@ export default function AdminProductsPage() {
               <TextField label="Unit (e.g. 20 fl oz bottle)" value={form.unit} onChange={(v) => setForm({ ...form, unit: v })} required />
               <TextField label="Art icon" value={form.art} onChange={(v) => setForm({ ...form, art: v })} required />
 
+              <ImageUploadField
+                value={form.imageUrl}
+                onChange={(url) => setForm({ ...form, imageUrl: url })}
+                className="sm:col-span-2"
+              />
+
               <TextField label="Price" type="number" step="0.01" value={form.price} onChange={(v) => setForm({ ...form, price: v })} required />
               <TextField label="List price (optional)" type="number" step="0.01" value={form.listPrice} onChange={(v) => setForm({ ...form, listPrice: v })} />
 
@@ -288,7 +299,7 @@ export default function AdminProductsPage() {
                   value={form.bullets}
                   onChange={(e) => setForm({ ...form, bullets: e.target.value })}
                   rows={4}
-                  className="w-full rounded-md border border-sma-border px-3 py-1.5 text-sm outline-none focus:border-sma-accent"
+                  className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-white outline-none focus:border-brand-green"
                 />
               </div>
 
@@ -299,7 +310,7 @@ export default function AdminProductsPage() {
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   rows={3}
                   required
-                  className="w-full rounded-md border border-sma-border px-3 py-1.5 text-sm outline-none focus:border-sma-accent"
+                  className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-white outline-none focus:border-brand-green"
                 />
               </div>
 
@@ -309,7 +320,7 @@ export default function AdminProductsPage() {
                 <button type="submit" disabled={saving} className="btn-pill btn-buy font-medium disabled:opacity-60">
                   {saving ? "Saving…" : modal.mode === "create" ? "Add product" : "Save changes"}
                 </button>
-                <button type="button" onClick={() => setModal(null)} className="btn-pill bg-[#f0f2f2] font-medium hover:bg-[#e3e6e6]">
+                <button type="button" onClick={() => setModal(null)} className="btn-pill btn-ghost font-medium">
                   Cancel
                 </button>
               </div>
@@ -335,7 +346,7 @@ function TextField({
         value={value}
         required={required}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-md border border-sma-border px-3 py-1.5 text-sm outline-none focus:border-sma-accent"
+        className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-white outline-none focus:border-brand-green"
       />
     </div>
   );
@@ -354,7 +365,7 @@ function SelectField({
         required={required}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-md border border-sma-border px-3 py-1.5 text-sm outline-none focus:border-sma-accent disabled:bg-[#f0f2f2]"
+        className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-white outline-none focus:border-brand-green disabled:opacity-50"
       >
         <option value="">Select…</option>
         {options.map((o) => (

@@ -138,7 +138,245 @@ async function main() {
     },
   });
 
+  /*
+   * Promotions. Seeded by a stable id so re-running the seed updates the same
+   * rows rather than stacking up duplicate deals on every run. Product ids are
+   * filtered against what actually exists, so a deal referencing a product that
+   * was removed still seeds — just with a shorter product list.
+   */
+  const seedDeals = [
+    {
+      id: 'deal-flash-coffee',
+      kind: 'flash' as const,
+      title: 'Coffee & donut for $3',
+      detail: 'Any large fresh brew with a glazed donut. Today only, while stocks last.',
+      productIds: ['gs-1004', 'gs-1011'],
+      endsInHours: 6,
+    },
+    {
+      id: 'deal-bogo-hotdog',
+      kind: 'bogo' as const,
+      title: '2 roller grill hot dogs for $5',
+      detail: 'Mix and match any two hot dogs from the roller grill.',
+      productIds: ['gs-1013'],
+    },
+    {
+      id: 'deal-percent-energy',
+      kind: 'percent' as const,
+      title: '20% off all energy drinks',
+      detail: 'Every energy can in the cooler, no limit.',
+      productIds: ['gs-1002'],
+      percentOff: 20,
+    },
+    {
+      id: 'deal-weekend-snacks',
+      kind: 'weekend' as const,
+      title: 'Weekend snack bundle — 25% off',
+      detail: 'Chips, jerky and nuts. Friday through Sunday.',
+      productIds: ['gs-1006', 'gs-1008', 'gs-1009'],
+      percentOff: 25,
+    },
+  ];
+
+  for (const { productIds, ...deal } of seedDeals) {
+    const existing = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true },
+    });
+    const connect = existing.map((p) => ({ id: p.id }));
+
+    await prisma.deal.upsert({
+      where: { id: deal.id },
+      update: { ...deal, products: { set: connect } },
+      create: { ...deal, products: { connect } },
+    });
+  }
+
+  /*
+   * Home page content. Seeded from what used to be hardcoded in the storefront
+   * so the page looks identical the first time it reads from the database, and
+   * every part of it is editable from the admin panel afterwards.
+   */
+  const heroSlides = [
+    {
+      id: 'hero-delivery',
+      sortOrder: 0,
+      eyebrow: 'Open 24 hours · Delivered in 30 minutes',
+      title: 'The whole store,\nbrought to your door',
+      blurb:
+        'Snacks, drinks, hot food and everything else on the shelf. Ordered now, on your doorstep in about half an hour.',
+      badgeBig: '30',
+      badgeSmall: 'MINUTE DELIVERY',
+      ctaLabel: 'Start shopping',
+      ctaHref: '/shop',
+      accent: '#00b04f',
+      tileImages: [] as string[],
+      fallbackArt: ['coffee', 'donut', 'soda', 'chips'],
+    },
+    {
+      id: 'hero-breakfast',
+      sortOrder: 1,
+      eyebrow: 'Breakfast served from 5am',
+      title: "Your morning's\nplus-one",
+      blurb:
+        'Grab a breakfast sandwich, hash browns and a coffee before the day gets going. Hot from 5am, every day.',
+      badgeBig: '$4',
+      badgeSmall: 'BREAKFAST BUNDLE',
+      ctaLabel: 'Shop the bakery',
+      ctaHref: '/department/bakery',
+      accent: '#f37021',
+      tileImages: [] as string[],
+      fallbackArt: ['sandwich', 'muffin', 'hotdog', 'coffee'],
+    },
+    {
+      id: 'hero-automotive',
+      sortOrder: 2,
+      eyebrow: 'Everything for the road',
+      title: 'Automotive kit\nwithout the detour',
+      blurb:
+        'Oil, wipers, washer fluid and chargers. The aisle you actually need, without a second stop.',
+      badgeBig: '24/7',
+      badgeSmall: 'ON THE ROAD',
+      ctaLabel: 'Shop automotive',
+      ctaHref: '/department/automotive',
+      accent: '#2f7fe0',
+      tileImages: [] as string[],
+      fallbackArt: ['oil', 'wiper', 'phoneCharger', 'coolant'],
+    },
+    {
+      id: 'hero-fuel',
+      sortOrder: 3,
+      eyebrow: 'Regular $3.49/gal today',
+      title: 'Fill up, then\nfill the basket',
+      blurb:
+        'Today’s pump price is locked in. Add the snacks while you are here and skip the queue inside.',
+      badgeBig: '24h',
+      badgeSmall: 'FUEL + MARKET',
+      ctaLabel: "See today's deals",
+      ctaHref: '/deals',
+      accent: '#ee1c25',
+      tileImages: [] as string[],
+      fallbackArt: ['energy', 'candy', 'jerky', 'gum'],
+    },
+  ];
+
+  for (const slide of heroSlides) {
+    await prisma.heroSlide.upsert({
+      where: { id: slide.id },
+      update: slide,
+      create: slide,
+    });
+  }
+
+  const showcaseCards = [
+    {
+      id: 'card-breakfast',
+      sortOrder: 0,
+      title: 'Breakfast, served early',
+      linkLabel: 'Shop the bakery',
+      linkHref: '/department/bakery',
+      variant: 'grid',
+      tiles: [
+        { label: 'Fresh coffee', href: '/department/bakery', imageUrl: null, art: 'coffee', hue: 25 },
+        { label: 'Donuts & muffins', href: '/department/bakery', imageUrl: null, art: 'donut', hue: 25 },
+        { label: 'Breakfast sandwiches', href: '/department/bakery', imageUrl: null, art: 'sandwich', hue: 40 },
+        { label: 'Juice & milk', href: '/department/drinks', imageUrl: null, art: 'juice', hue: 35 },
+      ],
+    },
+    {
+      id: 'card-snacks',
+      sortOrder: 1,
+      title: 'Snacks for the road',
+      linkLabel: 'Shop all snacks',
+      linkHref: '/department/snacks',
+      variant: 'grid',
+      tiles: [
+        { label: 'Chips & crisps', href: '/department/snacks', imageUrl: null, art: 'chips', hue: 45 },
+        { label: 'Candy & chocolate', href: '/department/snacks', imageUrl: null, art: 'chocolate', hue: 20 },
+        { label: 'Jerky & nuts', href: '/department/snacks', imageUrl: null, art: 'jerky', hue: 20 },
+        { label: 'Gum & mints', href: '/department/snacks', imageUrl: null, art: 'gum', hue: 175 },
+      ],
+    },
+    {
+      id: 'card-automotive',
+      sortOrder: 2,
+      title: 'Keep the car happy',
+      linkLabel: 'Shop automotive',
+      linkHref: '/department/automotive',
+      variant: 'grid',
+      tiles: [
+        { label: 'Motor oil', href: '/department/automotive', imageUrl: null, art: 'oil', hue: 200 },
+        { label: 'Wiper blades', href: '/department/automotive', imageUrl: null, art: 'wiper', hue: 210 },
+        { label: 'Chargers', href: '/department/automotive', imageUrl: null, art: 'phoneCharger', hue: 220 },
+        { label: 'Washer fluid', href: '/department/automotive', imageUrl: null, art: 'coolant', hue: 195 },
+      ],
+    },
+    {
+      id: 'card-household',
+      sortOrder: 3,
+      title: 'Household essentials',
+      linkLabel: 'Shop household',
+      linkHref: '/department/household',
+      variant: 'grid',
+      tiles: [
+        { label: 'Cleaning', href: '/department/household', imageUrl: null, art: 'cleaner', hue: 165 },
+        { label: 'Paper goods', href: '/department/household', imageUrl: null, art: 'paperTowel', hue: 150 },
+        { label: 'Batteries', href: '/department/household', imageUrl: null, art: 'battery', hue: 55 },
+        { label: 'Pain relief', href: '/department/medicine', imageUrl: null, art: 'pills', hue: 190 },
+      ],
+    },
+  ];
+
+  showcaseCards.push(
+    {
+      id: 'card-dairy',
+      sortOrder: 4,
+      title: 'Forgot the milk?',
+      linkLabel: 'Shop grocery',
+      linkHref: '/department/grocery',
+      variant: 'single',
+      tiles: [
+        { label: 'Dairy', href: '/department/grocery', imageUrl: null, art: 'milk', hue: 200 },
+      ],
+    },
+    {
+      id: 'card-pet',
+      sortOrder: 5,
+      title: 'For the dog in the back seat',
+      linkLabel: 'Shop pet supplies',
+      linkHref: '/department/pet-supplies',
+      variant: 'single',
+      tiles: [
+        { label: 'Pet supplies', href: '/department/pet-supplies', imageUrl: null, art: 'petFood', hue: 100 },
+      ],
+    },
+    {
+      id: 'card-pharmacy',
+      sortOrder: 6,
+      title: 'Pharmacy & first aid',
+      linkLabel: 'Shop medicine',
+      linkHref: '/department/medicine',
+      variant: 'grid',
+      tiles: [
+        { label: 'Pain relief', href: '/department/medicine', imageUrl: null, art: 'pills', hue: 190 },
+        { label: 'First aid', href: '/department/medicine', imageUrl: null, art: 'bandage', hue: 210 },
+        { label: 'Sanitiser', href: '/department/medicine', imageUrl: null, art: 'sanitizer', hue: 175 },
+        { label: 'Travel size', href: '/department/medicine', imageUrl: null, art: 'toothpaste', hue: 180 },
+      ],
+    },
+  );
+
+  for (const card of showcaseCards) {
+    await prisma.showcaseCard.upsert({
+      where: { id: card.id },
+      update: card,
+      create: card,
+    });
+  }
+
   console.log(`Seeded ${departments.length} departments, ${categories.length} categories, ${products.length} products.`);
+  console.log(`Seeded ${seedDeals.length} deals.`);
+  console.log(`Seeded ${heroSlides.length} hero slides and ${showcaseCards.length} showcase cards.`);
   console.log(`Admin login: ${adminEmail} / ${adminPassword}`);
 }
 

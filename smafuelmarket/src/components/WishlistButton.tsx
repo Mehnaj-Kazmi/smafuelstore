@@ -1,6 +1,7 @@
 "use client";
 
 import { useCart } from "@/lib/cart";
+import { useAuthGate } from "@/lib/auth-gate";
 
 export default function WishlistButton({
   productId,
@@ -12,21 +13,29 @@ export default function WishlistButton({
   withLabel?: boolean;
 }) {
   const { isWished, toggleWish, hydrated } = useCart();
+  const { requireAuth } = useAuthGate();
   const active = hydrated && isWished(productId);
+
+  /* Saving is tied to an account, so a signed-out visitor is routed to sign in
+     rather than silently writing to a wishlist nobody will see again. */
+  function handleClick() {
+    if (!requireAuth("wishlist")) return;
+    toggleWish(productId);
+  }
 
   return (
     <button
       type="button"
-      onClick={() => toggleWish(productId)}
+      onClick={handleClick}
       aria-pressed={active}
       aria-label={active ? "Remove from wishlist" : "Save to wishlist"}
-      className={`inline-flex items-center gap-1.5 ${className}`}
+      className={`inline-flex items-center gap-1.5 transition-transform active:scale-90 ${className}`}
     >
       <svg
         viewBox="0 0 24 24"
-        className="h-5 w-5"
-        fill={active ? "#c7511f" : "none"}
-        stroke={active ? "#c7511f" : "currentColor"}
+        className="h-5 w-5 transition-colors"
+        fill={active ? "#ee1c25" : "none"}
+        stroke={active ? "#ee1c25" : "currentColor"}
         strokeWidth="1.8"
         aria-hidden="true"
       >

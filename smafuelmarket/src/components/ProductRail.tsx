@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Product } from "@/lib/catalog";
 import ProductCard from "./ProductCard";
+import WordReveal from "./WordReveal";
 
 /** A white panel holding a horizontally scrollable row of product cards. */
 export default function ProductRail({
@@ -43,11 +44,18 @@ export default function ProductRail({
   if (products.length === 0) return null;
 
   return (
-    <section className="relative bg-white px-4 py-4">
-      <div className="mb-3 flex items-baseline justify-between gap-4">
-        <h2 className="text-xl font-bold sm:text-[21px]">{title}</h2>
+    <section className="relative">
+      <div className="mb-4 flex items-baseline justify-between gap-4">
+        <WordReveal
+          as="h2"
+          text={title}
+          className="text-[22px] font-extrabold tracking-tight text-white sm:text-[26px]"
+        />
         {seeAllHref && (
-          <Link href={seeAllHref} className="shrink-0 text-[13px] text-sma-link hover:text-sma-link-hover hover:underline">
+          <Link
+            href={seeAllHref}
+            className="link-draw shrink-0 text-[13px] font-bold text-brand-green"
+          >
             {seeAllLabel}
           </Link>
         )}
@@ -56,7 +64,7 @@ export default function ProductRail({
       <div
         ref={trackRef}
         onScroll={sync}
-        className="flex snap-x gap-3 overflow-x-auto scroll-smooth no-scrollbar"
+        className="flex snap-x gap-4 overflow-x-auto scroll-smooth no-scrollbar"
       >
         {products.map((p) => (
           <div key={p.id} className="w-[168px] shrink-0 snap-start sm:w-[200px]">
@@ -77,11 +85,11 @@ function RailArrow({ dir, onClick }: { dir: "left" | "right"; onClick: () => voi
       type="button"
       onClick={onClick}
       aria-label={dir === "left" ? "Scroll left" : "Scroll right"}
-      className={`absolute top-1/2 hidden h-20 w-9 -translate-y-1/2 items-center justify-center rounded-md border border-sma-border bg-white/95 shadow-md transition hover:bg-gray-50 sm:flex ${
-        dir === "left" ? "left-1" : "right-1"
+      className={`absolute top-1/2 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-line bg-black/70 text-white/80 shadow-xl backdrop-blur transition hover:border-white hover:text-white sm:flex ${
+        dir === "left" ? "-left-3" : "-right-3"
       }`}
     >
-      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="#0f1111" strokeWidth="2" aria-hidden="true">
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true">
         <path d={dir === "left" ? "M15 5l-7 7 7 7" : "M9 5l7 7-7 7"} strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     </button>

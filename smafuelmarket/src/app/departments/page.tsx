@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function DepartmentsPage() {
   return (
     <div className="mx-auto max-w-[1500px] px-3 py-4">
-      <div className="bg-white p-5">
+      <div className="bg-surface p-5">
         <h1 className="text-2xl font-bold">Departments</h1>
         <p className="mt-1 text-sm text-sma-muted">
           Nine departments, {departments.reduce((n, d) => n + byDepartment(d.slug).length, 0)} products in stock.
@@ -23,7 +23,7 @@ export default function DepartmentsPage() {
           const count = byDepartment(d.slug).length;
           const cats = categoriesIn(d.slug);
           return (
-            <section key={d.slug} className="flex gap-4 bg-white p-5">
+            <section key={d.slug} className="flex gap-4 bg-surface p-5">
               <Link href={`/department/${d.slug}`} className="shrink-0">
                 <ProductArt art={d.art} hue={d.hue} className="h-24 w-24 rounded-md" />
               </Link>

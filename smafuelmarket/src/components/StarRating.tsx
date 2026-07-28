@@ -18,12 +18,12 @@ export default function StarRating({
     >
       <span className="absolute inset-0 flex">
         {Array.from({ length: 5 }).map((_, i) => (
-          <Star key={i} size={size} fill="#e3e6e6" />
+          <Star key={i} size={size} fill="#33333b" />
         ))}
       </span>
       <span className="absolute inset-0 flex overflow-hidden" style={{ width: `${pct}%` }}>
         {Array.from({ length: 5 }).map((_, i) => (
-          <Star key={i} size={size} fill="#ffa41c" />
+          <Star key={i} size={size} fill="#ffb020" />
         ))}
       </span>
     </span>

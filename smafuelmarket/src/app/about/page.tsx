@@ -26,14 +26,14 @@ export default function AboutPage() {
           { n: "~30 min", label: "Average time from order placed to knock on the door." },
           { n: `${primaryStore.radiusMiles} miles`, label: "Delivery radius, so orders arrive cold or hot as intended." },
         ].map((s) => (
-          <div key={s.n} className="bg-white p-5">
+          <div key={s.n} className="bg-surface p-5">
             <p className="text-2xl font-bold text-sma-accent-dark">{s.n}</p>
             <p className="mt-1 text-[13px] leading-5 text-sma-muted">{s.label}</p>
           </div>
         ))}
       </section>
 
-      <section className="mt-5 bg-white p-6">
+      <section className="mt-5 bg-surface p-6">
         <h2 className="mb-3 text-xl font-bold">Why the two-mile limit</h2>
         <p className="text-[13px] leading-6">
           Half of what we sell is temperature sensitive. Coffee goes cold, ice cream goes soft, and a breakfast
@@ -47,7 +47,7 @@ export default function AboutPage() {
         </p>
       </section>
 
-      <section className="mt-5 bg-white p-6">
+      <section className="mt-5 bg-surface p-6">
         <h2 className="mb-3 text-xl font-bold">Age-restricted sales</h2>
         <p className="text-[13px] leading-6">
           Tobacco and lighters require photo ID at handover, every time, regardless of what was confirmed at
@@ -58,7 +58,7 @@ export default function AboutPage() {
 
       <div className="mt-5 flex flex-wrap gap-3">
         <Link href="/shop" className="btn-pill btn-cart font-medium">Shop the store</Link>
-        <Link href="/contact" className="btn-pill bg-white font-medium hover:bg-gray-50">Find us</Link>
+        <Link href="/contact" className="btn-pill bg-surface font-medium hover:bg-gray-50">Find us</Link>
       </div>
     </div>
   );

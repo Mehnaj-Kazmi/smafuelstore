@@ -1,31 +1,68 @@
 @import "tailwindcss";
 
+/*
+ * SMA Fuel & Market — dark convenience-store theme.
+ *
+ * The storefront used to be a light, Amazon-style grey canvas. It is now a
+ * black-canvas layout in the spirit of a modern forecourt brand: heavy display
+ * type, saturated brand accents, and product art floating on black.
+ *
+ * The legacy `sma-*` tokens are kept (dozens of components reference them) but
+ * remapped to dark-theme values, so a page that has not been touched yet still
+ * reads correctly instead of turning into black-on-black.
+ */
 @theme {
-  /* SMA Store brand palette */
-  --color-sma-navy: #131a22;
-  --color-sma-navy-light: #232f3e;
-  --color-sma-navy-hover: #37475a;
-  --color-sma-accent: #ffa41c;
-  --color-sma-accent-dark: #f08804;
-  --color-sma-accent-soft: #febd69;
-  --color-sma-yellow: #ffd814;
-  --color-sma-yellow-dark: #f7ca00;
-  --color-sma-link: #007185;
-  --color-sma-link-hover: #c7511f;
-  --color-sma-price: #b12704;
-  --color-sma-deal: #cc0c39;
-  --color-sma-canvas: #eaeded;
-  --color-sma-border: #d5d9d9;
-  --color-sma-muted: #565959;
+  /* --- Brand ------------------------------------------------------------ */
+  --color-brand-green: #00b04f;
+  --color-brand-green-dark: #00703c;
+  --color-brand-orange: #f37021;
+  --color-brand-red: #ee1c25;
 
-  --font-sans: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* --- Canvas & surfaces ------------------------------------------------ */
+  --color-canvas: #000000;
+  --color-surface: #121214;
+  --color-surface-2: #1c1c20;
+  --color-surface-3: #26262b;
+  --color-line: #2e2e34;
+  --color-line-strong: #43434c;
+
+  /* --- Text ------------------------------------------------------------- */
+  --color-ink: #ffffff;
+  --color-ink-soft: #b8b8c0;
+  --color-ink-faint: #83838e;
+
+  /* --- Legacy aliases, remapped for the dark theme ---------------------- */
+  --color-sma-navy: #000000;
+  --color-sma-navy-light: #121214;
+  --color-sma-navy-hover: #26262b;
+  --color-sma-accent: #f37021;
+  --color-sma-accent-dark: #d55b12;
+  --color-sma-accent-soft: #00b04f;
+  --color-sma-yellow: #00b04f;
+  --color-sma-yellow-dark: #00703c;
+  --color-sma-link: #35d67d;
+  --color-sma-link-hover: #7ef0ac;
+  --color-sma-price: #ffffff;
+  --color-sma-deal: #ff4d55;
+  --color-sma-canvas: #000000;
+  --color-sma-border: #2e2e34;
+  --color-sma-muted: #b8b8c0;
+
+  /* --- Type ------------------------------------------------------------- */
+  --font-sans: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Archivo", Inter, "Segoe UI Variable Display", "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* --- Motion ----------------------------------------------------------- */
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-back: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 /*
- * These element defaults must live in @layer base. Tailwind v4 emits its
- * utilities inside a cascade layer, and unlayered rules beat layered ones
- * regardless of specificity — an unlayered `a { color: inherit }` would
- * silently override every text-colour utility applied to a link.
+ * Element defaults must live in @layer base. Tailwind v4 emits its utilities
+ * inside a cascade layer, and unlayered rules beat layered ones regardless of
+ * specificity — an unlayered `a { color: inherit }` would silently override
+ * every text-colour utility applied to a link.
  */
 @layer base {
   html,
@@ -35,8 +72,8 @@
   }
 
   body {
-    background: var(--color-sma-canvas);
-    color: #0f1111;
+    background: var(--color-canvas);
+    color: var(--color-ink);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
@@ -46,11 +83,31 @@
     text-decoration: none;
   }
 
-  /* Focus ring consistent with the storefront chrome */
+  /* Headings carry the condensed poster weight the brand leans on. */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-stretch: 92%;
+    letter-spacing: -0.02em;
+  }
+
+  ::selection {
+    background: var(--color-brand-green);
+    color: #000;
+  }
+
   :focus-visible {
-    outline: 2px solid var(--color-sma-accent);
+    outline: 2px solid var(--color-brand-green);
     outline-offset: 2px;
     border-radius: 2px;
+  }
+
+  /* Dark form controls, so inputs stop rendering as bright white blocks. */
+  input,
+  select,
+  textarea {
+    color-scheme: dark;
   }
 }
 
@@ -63,31 +120,388 @@
   display: none;
 }
 
-/* The classic storefront "action" buttons */
 @layer components {
+  /* --- Buttons ---------------------------------------------------------- */
   .btn-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
     border-radius: 9999px;
-    padding: 0.4rem 1rem;
+    padding: 0.55rem 1.35rem;
     font-size: 0.8125rem;
-    color: #0f1111;
-    border: 1px solid var(--color-sma-border);
-    box-shadow: 0 2px 5px rgba(15, 17, 17, 0.15);
-    transition: background-color 0.15s ease;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    border: 1px solid transparent;
+    transition:
+      background-color 0.18s ease,
+      color 0.18s ease,
+      transform 0.18s var(--ease-back),
+      box-shadow 0.18s ease;
+  }
+  .btn-pill:active {
+    transform: scale(0.97);
   }
 
+  /* Primary CTA: white pill on black, the signature forecourt button. */
   .btn-buy {
-    background: var(--color-sma-accent);
-    border-color: var(--color-sma-accent-dark);
+    background: #fff;
+    color: #000;
   }
   .btn-buy:hover {
-    background: var(--color-sma-accent-dark);
+    background: var(--color-brand-green);
+    color: #fff;
+    box-shadow: 0 0 0 4px rgb(0 176 79 / 0.22);
   }
 
   .btn-cart {
-    background: var(--color-sma-yellow);
-    border-color: var(--color-sma-yellow-dark);
+    background: var(--color-brand-green);
+    color: #fff;
   }
   .btn-cart:hover {
-    background: var(--color-sma-yellow-dark);
+    background: var(--color-brand-green-dark);
+    box-shadow: 0 0 0 4px rgb(0 176 79 / 0.22);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: #fff;
+    border-color: var(--color-line-strong);
+  }
+  .btn-ghost:hover {
+    border-color: #fff;
+    background: rgb(255 255 255 / 0.06);
+  }
+
+  /* --- Surfaces --------------------------------------------------------- */
+  .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: 1rem;
+  }
+
+  /* Eyebrow label above poster headlines. */
+  .eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-brand-green);
+  }
+}
+
+/* ========================================================================
+ * Motion
+ * ====================================================================== */
+
+@keyframes sma-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 26px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes sma-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes sma-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes sma-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(var(--tilt, 0deg));
+  }
+  50% {
+    transform: translateY(-11px) rotate(var(--tilt, 0deg));
+  }
+}
+
+@keyframes sma-marquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes sma-shine {
+  from {
+    transform: translateX(-120%) skewX(-18deg);
+  }
+  to {
+    transform: translateX(320%) skewX(-18deg);
+  }
+}
+
+/* --- Opening title card (IntroSplash) ---------------------------------
+ *
+ * A solid brand panel builds the mark, then splits across the seam and the two
+ * halves slide off screen. The panels are positioned so the seam sits slightly
+ * above centre, which reads as opening rather than sliding.
+ */
+
+.intro-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: var(--color-brand-green);
+  transition: transform 0.75s var(--ease-out-quint);
+}
+.intro-panel-top {
+  top: 0;
+  height: 44%;
+}
+.intro-panel-bottom {
+  bottom: 0;
+  height: 56%;
+}
+.intro-panel-top.is-open {
+  transform: translateY(-100%);
+}
+.intro-panel-bottom.is-open {
+  transform: translateY(100%);
+}
+
+@keyframes sma-intro-mark {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+    filter: blur(9px);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes sma-intro-tag {
+  0% {
+    opacity: 0;
+    letter-spacing: 0.75em;
+    filter: blur(5px);
+  }
+  100% {
+    opacity: 1;
+    letter-spacing: 0.3em;
+    filter: none;
+  }
+}
+
+.intro-mark {
+  animation: sma-intro-mark 0.75s var(--ease-out-quint) backwards;
+}
+.intro-tag {
+  letter-spacing: 0.3em;
+  animation: sma-intro-tag 0.85s var(--ease-out-quint) 0.28s backwards;
+}
+
+/* The mark dissolves just before the curtain parts, so the panels open onto
+   the page rather than dragging the logo off with them. */
+.intro-mark-out {
+  opacity: 0;
+  filter: blur(12px);
+  transition:
+    opacity 0.28s ease,
+    filter 0.28s ease;
+}
+
+/* --- Word-by-word headline reveal (WordReveal) ------------------------ */
+
+@keyframes sma-word-in {
+  0% {
+    opacity: 0;
+    letter-spacing: 0.42em;
+    filter: blur(7px);
+    transform: translateY(6px);
+  }
+  55% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    letter-spacing: inherit;
+    filter: blur(0);
+    transform: none;
+  }
+}
+
+/*
+ * Both states declare the resting appearance statically, so a headline is
+ * always readable: `word-idle` is the pre-animation state for a heading that
+ * has not been reached yet, and `word-in` ends where the static styles already
+ * are. `backwards` fill means an animation that never runs leaves the word at
+ * its natural spacing rather than pinned to the wide, blurred first frame.
+ */
+.word-idle,
+.word-in {
+  display: inline-block;
+  white-space: pre;
+}
+.word-idle {
+  opacity: 0;
+}
+.word-in {
+  opacity: 1;
+  animation: sma-word-in 0.72s var(--ease-out-quint) backwards;
+}
+
+@keyframes sma-pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgb(0 176 79 / 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgb(0 176 79 / 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgb(0 176 79 / 0);
+  }
+}
+
+/*
+ * Scroll reveal. Elements start hidden and are animated by the Reveal
+ * component once they enter the viewport, which sets `data-shown`.
+ *
+ * Every animated rule below declares its *resting* state statically and uses
+ * `backwards` fill rather than `both`. `backwards` holds the `from` frame
+ * during the delay, then hands back to the static value once the animation
+ * ends. The difference matters: with `both`, an environment that never runs
+ * the animation (a backgrounded tab, a restricted embedded view, a browser
+ * that skipped the frame) would pin the element at `from` — opacity 0 —
+ * and the content would be invisible forever. With `backwards`, the static
+ * `opacity: 1` still applies, so the worst case is a missing animation
+ * rather than missing content.
+ */
+.reveal {
+  opacity: 0;
+  will-change: opacity, transform;
+}
+.reveal[data-shown="true"] {
+  opacity: 1;
+  animation: sma-rise 0.72s var(--ease-out-quint) backwards;
+  animation-delay: var(--reveal-delay, 0ms);
+}
+
+.anim-rise {
+  animation: sma-rise 0.72s var(--ease-out-quint) backwards;
+}
+.anim-fade {
+  animation: sma-fade 0.6s ease backwards;
+}
+.anim-pop {
+  animation: sma-pop 0.5s var(--ease-back) backwards;
+}
+.anim-float {
+  animation: sma-float 5.5s ease-in-out infinite;
+}
+
+/* Infinite ticker. The track must contain the content twice. */
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: sma-marquee var(--marquee-duration, 34s) linear infinite;
+}
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+
+/* Sweeping gloss, used on cards and promo panels. */
+.shine {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.shine::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 42%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(255 255 255 / 0.16),
+    transparent
+  );
+  transform: translateX(-120%) skewX(-18deg);
+  pointer-events: none;
+  z-index: 1;
+}
+.shine:hover::after {
+  animation: sma-shine 0.85s var(--ease-out-quint);
+}
+
+/* Card lift on hover. */
+.lift {
+  transition:
+    transform 0.28s var(--ease-out-quint),
+    border-color 0.28s ease,
+    box-shadow 0.28s ease;
+}
+.lift:hover {
+  transform: translateY(-6px);
+  border-color: var(--color-line-strong);
+  box-shadow: 0 18px 40px -18px rgb(0 0 0 / 0.9);
+}
+
+.pulse-ring {
+  animation: sma-pulse-ring 2.2s ease-out infinite;
+}
+
+/* Underline that draws in from the left. */
+.link-draw {
+  position: relative;
+}
+.link-draw::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -3px;
+  height: 2px;
+  width: 100%;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.32s var(--ease-out-quint);
+}
+.link-draw:hover::after {
+  transform: scaleX(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal[data-shown="true"],
+  .anim-rise,
+  .anim-fade,
+  .anim-pop,
+  .anim-float,
+  .marquee-track,
+  .pulse-ring,
+  .shine::after {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .lift:hover {
+    transform: none;
   }
 }

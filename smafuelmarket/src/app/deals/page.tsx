@@ -3,14 +3,16 @@ import type { Metadata } from "next";
 import ProductCard from "@/components/ProductCard";
 import { deals, dealKindClass, dealKindLabel, dealProducts, coupons } from "@/lib/deals";
 import { getProduct } from "@/lib/catalog";
+import { getCatalogProducts } from "@/lib/catalog-source";
 
 export const metadata: Metadata = {
   title: "Daily Deals",
   description: "Flash sales, buy-one-get-one offers and weekend deals at SMA Fuel & Market.",
 };
 
-export default function DealsPage() {
-  const all = dealProducts();
+export default async function DealsPage() {
+  const catalog = await getCatalogProducts();
+  const all = dealProducts(catalog);
 
   return (
     <>
@@ -25,11 +27,11 @@ export default function DealsPage() {
 
       <div className="mx-auto max-w-[1500px] px-3 py-4">
         {/* Live offers */}
-        <section className="bg-white p-5">
+        <section className="bg-surface p-5">
           <h2 className="mb-4 text-xl font-bold">Running now</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {deals.map((deal) => {
-              const first = getProduct(deal.productIds[0]);
+              const first = getProduct(deal.productIds[0], catalog);
               return (
                 <article key={deal.id} className="flex flex-col rounded-lg border border-sma-border p-4">
                   <div className="mb-2 flex items-center gap-2">
@@ -56,7 +58,7 @@ export default function DealsPage() {
         </section>
 
         {/* Coupons */}
-        <section className="mt-5 bg-white p-5">
+        <section className="mt-5 bg-surface p-5">
           <h2 className="mb-1 text-xl font-bold">Coupon codes</h2>
           <p className="mb-4 text-[13px] text-sma-muted">Enter any of these at checkout.</p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -70,7 +72,7 @@ export default function DealsPage() {
         </section>
 
         {/* Discounted products */}
-        <section className="mt-5 bg-white p-5">
+        <section className="mt-5 bg-surface p-5">
           <h2 className="mb-4 text-xl font-bold">Everything on offer</h2>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
             {all.map((p) => (

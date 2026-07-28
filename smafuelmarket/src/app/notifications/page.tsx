@@ -20,7 +20,7 @@ export default function NotificationsPage() {
   const unread = items.filter((i) => i.unread).length;
   return (
     <div className="mx-auto max-w-[800px] px-4 py-6">
-      <div className="flex items-center justify-between bg-white p-5">
+      <div className="flex items-center justify-between bg-surface p-5">
         <div>
           <h1 className="text-2xl font-bold">Notifications</h1>
           <p className="mt-1 text-sm text-sma-muted">{unread} unread</p>
@@ -32,7 +32,7 @@ export default function NotificationsPage() {
 
       <ul className="mt-5 space-y-3">
         {items.map((n) => (
-          <li key={n.title} className={`border-l-4 bg-white p-4 ${toneClass[n.tone]} ${n.unread ? "" : "opacity-70"}`}>
+          <li key={n.title} className={`border-l-4 bg-surface p-4 ${toneClass[n.tone]} ${n.unread ? "" : "opacity-70"}`}>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-sm font-bold">{n.title}</h2>
               <span className="text-xs text-sma-muted">{n.when}</span>

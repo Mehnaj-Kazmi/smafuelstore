@@ -14,6 +14,7 @@ const nav = [
   { label: "Orders", href: "/admin/orders" },
   { label: "Customers", href: "/admin/customers" },
   { label: "Daily deals", href: "/admin/deals" },
+  { label: "Homepage", href: "/admin/homepage" },
   { label: "Reports", href: "/admin/reports" },
 ];
 
@@ -21,23 +22,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <AdminGuard>
       <div className="mx-auto max-w-[1500px] px-3 py-4">
-        <div className="mb-4 rounded-lg bg-sma-navy px-5 py-4 text-white">
+        <div className="mb-5 rounded-2xl border border-line bg-surface px-5 py-4 text-white">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h1 className="text-xl font-bold">Store admin</h1>
-              <p className="text-xs text-gray-300">SMA Fuel &amp; Market — Riverside</p>
+              <h1 className="text-xl font-extrabold">Store admin</h1>
+              <p className="text-xs text-ink-faint">SMA Fuel &amp; Market — Riverside</p>
             </div>
-            <Link href="/" className="rounded-full bg-white/15 px-3 py-1.5 text-xs font-medium hover:bg-white/25">
+            <Link
+              href="/"
+              className="rounded-full border border-line px-3.5 py-1.5 text-xs font-bold transition hover:border-brand-green hover:text-brand-green"
+            >
               View storefront →
             </Link>
           </div>
 
-          <nav className="mt-3 flex gap-1 overflow-x-auto no-scrollbar">
+          <nav className="mt-4 flex gap-1 overflow-x-auto no-scrollbar">
             {nav.map((n) => (
               <Link
                 key={n.href}
                 href={n.href}
-                className="shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-[13px] hover:bg-white/15"
+                className="shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-[13px] font-semibold text-ink-soft transition hover:bg-surface-2 hover:text-white"
               >
                 {n.label}
               </Link>

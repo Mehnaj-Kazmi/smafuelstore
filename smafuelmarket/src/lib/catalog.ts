@@ -42,6 +42,12 @@ export type Product = {
   lowStockAt: number;
   rating: number;
   reviews: number;
+  /**
+   * Uploaded photograph, as returned by the API's upload endpoint. Absent for
+   * every product in the seed catalogue below, which is drawn as generated
+   * artwork from `art` + `hue` instead.
+   */
+  imageUrl?: string | null;
   art: ArtKey;
   hue: number;
   ageRestricted?: boolean;
@@ -491,18 +497,24 @@ export const products: Product[] = [
   }),
 ];
 
-/* ---- Lookups ------------------------------------------------------------ */
+/* ---- Lookups ------------------------------------------------------------
+ *
+ * Each lookup takes the list to search, defaulting to the seed catalogue above.
+ * Passing a list is how live data from the API flows through: the storefront
+ * hands in what it fetched, while anything that has not been converted yet
+ * keeps working against the seed unchanged.
+ */
 
-export function getProduct(id: string): Product | undefined {
-  return products.find((p) => p.id === id);
+export function getProduct(id: string, list: Product[] = products): Product | undefined {
+  return list.find((p) => p.id === id);
 }
 
-export function byDepartment(slug: DepartmentSlug): Product[] {
-  return products.filter((p) => p.department === slug);
+export function byDepartment(slug: DepartmentSlug, list: Product[] = products): Product[] {
+  return list.filter((p) => p.department === slug);
 }
 
-export function byCategory(slug: string): Product[] {
-  return products.filter((p) => p.category === slug);
+export function byCategory(slug: string, list: Product[] = products): Product[] {
+  return list.filter((p) => p.category === slug);
 }
 
 export function categoriesIn(slug: DepartmentSlug): Category[] {
@@ -520,9 +532,9 @@ export function stockState(p: Product): "out" | "low" | "ok" {
   return "ok";
 }
 
-export function relatedProducts(product: Product, limit = 6): Product[] {
-  const sameCategory = products.filter((p) => p.category === product.category && p.id !== product.id);
-  const sameDept = products.filter(
+export function relatedProducts(product: Product, limit = 6, list: Product[] = products): Product[] {
+  const sameCategory = list.filter((p) => p.category === product.category && p.id !== product.id);
+  const sameDept = list.filter(
     (p) => p.department === product.department && p.category !== product.category && p.id !== product.id,
   );
   return [...sameCategory, ...sameDept].slice(0, limit);
@@ -548,9 +560,10 @@ export function sortProducts(list: Product[], sort: SortKey): Product[] {
 export function searchProducts(
   query: string,
   opts: { department?: DepartmentSlug | "all"; sort?: SortKey } = {},
+  source: Product[] = products,
 ): Product[] {
   const q = query.trim().toLowerCase();
-  const list = products.filter((p) => {
+  const list = source.filter((p) => {
     if (opts.department && opts.department !== "all" && p.department !== opts.department) return false;
     if (!q) return true;
     const hay = `${p.title} ${p.brand} ${p.department} ${p.category} ${p.sku} ${p.tags.join(" ")}`.toLowerCase();

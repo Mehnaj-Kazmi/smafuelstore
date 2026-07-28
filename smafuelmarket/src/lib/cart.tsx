@@ -1,7 +1,8 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useReducer } from "react";
-import { getProduct, type Product } from "./catalog";
+import { type Product } from "./catalog";
+import { useCatalog } from "./catalog-context";
 import type { CartLine, Order } from "./orders";
 
 export type { CartLine, Order, OrderStatus } from "./orders";
@@ -26,7 +27,13 @@ const STORAGE_KEY = "sma-gas-store:v1";
 
 const initial: State = { lines: [], wishlist: [], orders: [], hydrated: false };
 
-function reducer(state: State, action: Action): State {
+/**
+ * Built per-catalogue rather than declared once at module scope, so the stock
+ * caps below come from the live product list the storefront rendered — not from
+ * the seed data, which would cap a newly added product at a stale number.
+ */
+function makeReducer(getProduct: (id: string) => Product | undefined) {
+  return function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "hydrate":
       return { ...state, ...action.state, hydrated: true };
@@ -86,6 +93,8 @@ function reducer(state: State, action: Action): State {
   }
 }
 
+}
+
 export type CartItem = CartLine & { product: Product; lineTotal: number };
 
 type Value = {
@@ -110,6 +119,8 @@ type Value = {
 const CartContext = createContext<Value | null>(null);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
+  const { getProduct } = useCatalog();
+  const reducer = useMemo(() => makeReducer(getProduct), [getProduct]);
   const [state, dispatch] = useReducer(reducer, initial);
 
   useEffect(() => {
@@ -127,7 +138,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } catch {
       dispatch({ type: "hydrate", state: { lines: [], wishlist: [], orders: [] } });
     }
-  }, []);
+  }, [getProduct]);
 
   useEffect(() => {
     if (!state.hydrated) return;
@@ -183,7 +194,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         return order;
       },
     };
-  }, [state]);
+  }, [state, getProduct]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

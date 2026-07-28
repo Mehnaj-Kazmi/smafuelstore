@@ -43,49 +43,74 @@ const columns = [
 
 export default function Footer() {
   return (
-    <footer className="mt-8">
-      <a href="#top" className="block bg-sma-navy-hover py-4 text-center text-[13px] text-white transition hover:bg-[#485769]">
-        Back to top
+    <footer className="mt-14 border-t border-line bg-black">
+      <a
+        href="#top"
+        className="group block border-b border-line py-4 text-center text-[13px] font-bold text-ink-soft transition hover:text-white"
+      >
+        <span className="inline-flex items-center gap-2">
+          <svg
+            viewBox="0 0 24 24"
+            className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-1"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.4"
+            aria-hidden="true"
+          >
+            <path d="M12 19V5M5 12l7-7 7 7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Back to top
+        </span>
       </a>
 
-      <div className="bg-sma-navy-light text-white">
-        <div className="mx-auto grid max-w-[1000px] grid-cols-2 gap-8 px-6 py-10 sm:grid-cols-4">
-          {columns.map((col) => (
-            <div key={col.heading}>
-              <h3 className="mb-2 text-base font-bold">{col.heading}</h3>
-              <ul className="space-y-2">
-                {col.links.map((link) => (
-                  <li key={link.label}>
-                    <Link href={link.href} className="text-[13px] text-gray-300 hover:underline">{link.label}</Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-
-        <div className="border-t border-white/20">
-          <div className="mx-auto flex max-w-[1000px] flex-wrap items-center justify-center gap-4 px-6 py-7 text-center">
-            <Link href="/" aria-label="SMA Fuel & Market home">
-              <SmaLogo className="h-10 w-auto" />
-            </Link>
-            <span className="rounded-sm border border-white/40 px-3 py-1.5 text-xs">{primaryStore.hours}</span>
-            <span className="rounded-sm border border-white/40 px-3 py-1.5 text-xs">
-              Delivery within {primaryStore.radiusMiles} miles
-            </span>
-            <span className="rounded-sm border border-white/40 px-3 py-1.5 text-xs">{primaryStore.phone}</span>
+      <div className="mx-auto grid max-w-[1100px] grid-cols-2 gap-8 px-6 py-14 sm:grid-cols-4">
+        {columns.map((col) => (
+          <div key={col.heading}>
+            <h3 className="eyebrow mb-3">{col.heading}</h3>
+            <ul className="space-y-2.5">
+              {col.links.map((link) => (
+                <li key={link.label}>
+                  <Link
+                    href={link.href}
+                    className="link-draw text-[13px] font-medium text-ink-soft transition-colors hover:text-white"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
+        ))}
+      </div>
+
+      <div className="border-t border-line">
+        <div className="mx-auto flex max-w-[1100px] flex-wrap items-center justify-center gap-3 px-6 py-8 text-center">
+          <Link href="/" aria-label="SMA Fuel & Market home" className="mr-2 transition-transform hover:scale-105">
+            <SmaLogo className="h-10 w-auto" />
+          </Link>
+          {[
+            primaryStore.hours,
+            `Delivery within ${primaryStore.radiusMiles} miles`,
+            primaryStore.phone,
+          ].map((chip) => (
+            <span
+              key={chip}
+              className="rounded-full border border-line px-4 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-brand-green hover:text-white"
+            >
+              {chip}
+            </span>
+          ))}
         </div>
       </div>
 
-      <div className="bg-sma-navy py-8 text-center text-xs text-gray-400">
+      <div className="border-t border-line py-8 text-center text-xs text-ink-faint">
         <div className="mx-auto flex max-w-[700px] flex-wrap justify-center gap-x-5 gap-y-2 px-4">
-          <Link href="/faqs" className="hover:underline">Conditions of use</Link>
-          <Link href="/faqs" className="hover:underline">Privacy notice</Link>
-          <Link href="/faqs" className="hover:underline">Age-restricted sales policy</Link>
-          <Link href="/contact" className="hover:underline">Contact us</Link>
+          <Link href="/faqs" className="transition-colors hover:text-white">Conditions of use</Link>
+          <Link href="/faqs" className="transition-colors hover:text-white">Privacy notice</Link>
+          <Link href="/faqs" className="transition-colors hover:text-white">Age-restricted sales policy</Link>
+          <Link href="/contact" className="transition-colors hover:text-white">Contact us</Link>
         </div>
-        <p className="mt-3">
+        <p className="mt-4">
           © {new Date().getFullYear()} SMA Fuel &amp; Market. {primaryStore.address}, {primaryStore.city}.
         </p>
         <p className="mt-1">A demonstration storefront — no real orders are fulfilled.</p>

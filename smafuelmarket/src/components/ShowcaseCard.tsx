@@ -1,12 +1,16 @@
 import Link from "next/link";
-import ProductArt from "./ProductArt";
-import type { ArtKey } from "@/lib/catalog";
+import ProductImage from "./ProductImage";
+import type { ShowcaseTile } from "@/lib/home-content";
 
-export type Tile = { label: string; href: string; art: ArtKey; hue: number };
+export type Tile = ShowcaseTile;
 
 /**
- * The white grid card that fills the home page: a heading, either one large
+ * The dark grid card that fills the home page: a heading, either one large
  * image or a 2×2 tile grid, and a link at the bottom.
+ *
+ * Tiles show an uploaded photograph when the admin has set one and fall back to
+ * the generated illustration otherwise, so a partly-photographed home page
+ * stays coherent instead of showing holes.
  */
 export default function ShowcaseCard({
   title,
@@ -21,17 +25,21 @@ export default function ShowcaseCard({
   linkHref: string;
   variant?: "grid" | "single";
 }) {
+  if (tiles.length === 0) return null;
+
   return (
-    <section className="flex flex-col bg-white p-5">
-      <h2 className="mb-3 text-[21px] font-bold leading-6">{title}</h2>
+    <section className="card lift flex flex-col p-5">
+      <h2 className="mb-4 text-[20px] font-extrabold leading-6 text-white">{title}</h2>
 
       {variant === "single" ? (
         <Link href={tiles[0].href} className="group block flex-1">
-          <div className="overflow-hidden rounded-sm">
-            <ProductArt
+          <div className="overflow-hidden rounded-xl bg-surface-2">
+            <ProductImage
+              imageUrl={tiles[0].imageUrl}
               art={tiles[0].art}
               hue={tiles[0].hue}
-              className="aspect-[4/3] w-full transition-transform duration-300 group-hover:scale-[1.03]"
+              alt={tiles[0].label}
+              className="aspect-[4/3] w-full transition-transform duration-500 group-hover:scale-[1.06]"
             />
           </div>
         </Link>
@@ -39,20 +47,27 @@ export default function ShowcaseCard({
         <div className="grid flex-1 grid-cols-2 gap-3">
           {tiles.slice(0, 4).map((tile) => (
             <Link key={tile.label + tile.href} href={tile.href} className="group block">
-              <div className="overflow-hidden rounded-sm">
-                <ProductArt
+              <div className="overflow-hidden rounded-xl bg-surface-2">
+                <ProductImage
+                  imageUrl={tile.imageUrl}
                   art={tile.art}
                   hue={tile.hue}
-                  className="aspect-square w-full transition-transform duration-300 group-hover:scale-[1.05]"
+                  alt={tile.label}
+                  className="aspect-square w-full transition-transform duration-500 group-hover:scale-[1.09]"
                 />
               </div>
-              <p className="mt-1.5 text-xs leading-4">{tile.label}</p>
+              <p className="mt-2 text-xs font-medium leading-4 text-ink-soft transition-colors group-hover:text-white">
+                {tile.label}
+              </p>
             </Link>
           ))}
         </div>
       )}
 
-      <Link href={linkHref} className="mt-4 text-[13px] text-sma-link hover:text-sma-link-hover hover:underline">
+      <Link
+        href={linkHref}
+        className="link-draw mt-5 self-start text-[13px] font-bold text-brand-green"
+      >
         {linkLabel}
       </Link>
     </section>

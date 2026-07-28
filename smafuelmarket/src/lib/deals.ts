@@ -23,9 +23,9 @@ export const dealKindLabel: Record<DealKind, string> = {
 
 export const dealKindClass: Record<DealKind, string> = {
   flash: "bg-sma-deal text-white",
-  percent: "bg-[#c45500] text-white",
-  bogo: "bg-[#067d62] text-white",
-  weekend: "bg-sma-navy-light text-white",
+  percent: "bg-brand-orange text-black",
+  bogo: "bg-brand-green text-black",
+  weekend: "bg-white text-black",
 };
 
 export const deals: Deal[] = [
@@ -79,9 +79,9 @@ export const deals: Deal[] = [
 ];
 
 /** Products carrying a live discount, best discount first. */
-export function dealProducts(): Product[] {
+export function dealProducts(source: Product[] = products): Product[] {
   const ids = new Set(deals.flatMap((d) => d.productIds));
-  return products
+  return source
     .filter((p) => ids.has(p.id) || (p.listPrice != null && p.listPrice > p.price))
     .sort((a, b) => {
       const da = a.listPrice ? (a.listPrice - a.price) / a.listPrice : 0;

@@ -6,10 +6,15 @@ import { nearestStore, primaryStore, type StoreLocation } from "./store-location
 /**
  * Delivery eligibility.
  *
- * Browsing is always allowed. Ordering requires a confirmed position inside a
- * store's delivery radius, so anything that leaves us unable to verify the
- * customer's location — denial, an unsupported browser, a lookup error — falls
- * back to "cannot order" rather than quietly permitting checkout.
+ * Browsing is always allowed. Ordering is blocked only when we have positively
+ * verified that the customer is outside every store's delivery radius.
+ *
+ * An earlier version refused to sell whenever location could not be confirmed,
+ * which meant a declined browser prompt disabled the entire catalogue — the
+ * common case, since most visitors decline. Not knowing where someone is is
+ * not evidence that they are too far away, so the unknown states now allow
+ * ordering and the address entered at checkout is what the delivery decision
+ * actually rests on.
  */
 
 export type DeliveryStatus =
@@ -60,7 +65,6 @@ export function DeliveryProvider({ children }: { children: React.ReactNode }) {
   const check = useCallback(() => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       setStatus("unsupported");
-      persist({ status: "unsupported" });
       return;
     }
 
@@ -76,9 +80,10 @@ export function DeliveryProvider({ children }: { children: React.ReactNode }) {
         persist({ status: next, distance: result.distance, storeId: result.store.id });
       },
       (err) => {
-        const next: DeliveryStatus = err.code === err.PERMISSION_DENIED ? "denied" : "error";
-        setStatus(next);
-        persist({ status: next });
+        /* Deliberately not persisted. Only a verified result is worth
+           remembering — caching a refusal would mean the store never asks
+           again on later visits, even after the visitor changes their mind. */
+        setStatus(err.code === err.PERMISSION_DENIED ? "denied" : "error");
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 5 * 60 * 1000 },
     );
@@ -103,7 +108,12 @@ export function DeliveryProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Restore a previous answer, or ask on the first visit.
+  /*
+   * Restore a previously verified answer. If there isn't one the status stays
+   * "unknown", which is what LocationPrompt watches for — the browser dialog is
+   * raised from that prompt's button rather than automatically on load, so the
+   * visitor is told why we're asking before the permission is spent.
+   */
   useEffect(() => {
     let saved: Persisted | null = null;
     try {
@@ -122,15 +132,14 @@ export function DeliveryProvider({ children }: { children: React.ReactNode }) {
     }
 
     setReady(true);
-    check();
-  }, [check]);
+  }, []);
 
   const value = useMemo<DeliveryValue>(
     () => ({
       status,
       distance,
       store,
-      canOrder: status === "in-range",
+      canOrder: status !== "out-of-range",
       ready,
       simulated,
       check,

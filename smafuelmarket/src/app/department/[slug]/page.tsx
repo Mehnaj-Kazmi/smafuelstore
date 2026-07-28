@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import ResultsBrowser from "@/components/ResultsBrowser";
 import { byDepartment, departments, departmentMap, type DepartmentSlug } from "@/lib/catalog";
+import { getCatalogProducts } from "@/lib/catalog-source";
 
 type Params = Promise<{ slug: string }>;
 
@@ -32,7 +33,7 @@ export default async function DepartmentPage({ params }: { params: Params }) {
         </div>
       )}
       <ResultsBrowser
-        pool={byDepartment(dept.slug)}
+        pool={byDepartment(dept.slug, await getCatalogProducts())}
         heading={dept.name}
         resultLabel={dept.blurb}
         department={dept.slug}

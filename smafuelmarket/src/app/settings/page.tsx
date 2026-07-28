@@ -18,11 +18,11 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-[800px] px-4 py-6">
-      <div className="bg-white p-5">
+      <div className="bg-surface p-5">
         <h1 className="text-2xl font-bold">Settings</h1>
       </div>
 
-      <section className="mt-5 bg-white p-6">
+      <section className="mt-5 bg-surface p-6">
         <h2 className="text-lg font-bold">Delivery location</h2>
         <p className="mt-1 text-[13px] leading-5 text-sma-muted">
           We compare your position against {store.name} to decide whether we can deliver. The comparison happens on
@@ -43,11 +43,11 @@ export default function SettingsPage() {
 
         <div className="mt-4 flex flex-wrap gap-3">
           <button type="button" onClick={check} className="btn-pill btn-cart font-medium">Re-check my location</button>
-          <button type="button" onClick={reset} className="btn-pill bg-white font-medium hover:bg-gray-50">Clear saved result</button>
+          <button type="button" onClick={reset} className="btn-pill bg-surface font-medium hover:bg-gray-50">Clear saved result</button>
         </div>
       </section>
 
-      <section className="mt-5 bg-white p-6">
+      <section className="mt-5 bg-surface p-6">
         <h2 className="text-lg font-bold">Notifications</h2>
         <div className="mt-3 space-y-2">
           {["Order status updates", "Daily deals and flash sales", "Back-in-stock alerts for saved items", "Receipts by email"].map((label, i) => (
@@ -59,11 +59,11 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section className="mt-5 bg-white p-6">
+      <section className="mt-5 bg-surface p-6">
         <h2 className="text-lg font-bold">Account</h2>
         <div className="mt-3 flex flex-wrap gap-3">
-          <button type="button" className="btn-pill bg-white font-medium hover:bg-gray-50">Change password</button>
-          <button type="button" className="btn-pill bg-white font-medium hover:bg-gray-50">Update contact details</button>
+          <button type="button" className="btn-pill bg-surface font-medium hover:bg-gray-50">Change password</button>
+          <button type="button" className="btn-pill bg-surface font-medium hover:bg-gray-50">Update contact details</button>
         </div>
         <p className="mt-3 text-xs text-sma-muted">Demonstration storefront — these controls are illustrative.</p>
       </section>

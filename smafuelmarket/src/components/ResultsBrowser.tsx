@@ -81,7 +81,7 @@ export default function ResultsBrowser({
 
   return (
     <div className="mx-auto max-w-[1500px] px-3 py-4">
-      <div className="bg-white">
+      <div className="bg-surface">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-sma-border px-4 py-3">
           <div>
             <h1 className="text-lg font-bold sm:text-xl">{heading}</h1>

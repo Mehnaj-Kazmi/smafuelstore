@@ -24,6 +24,9 @@ export class CreateProductDto {
   @Type(() => Number) @IsInt() @Min(0) stock: number;
   @Type(() => Number) @IsInt() @Min(0) lowStockAt: number;
 
+  /** Path returned by POST /api/uploads/product-image, e.g. /uploads/abc.jpg */
+  @IsOptional() @IsString() imageUrl?: string;
+
   @IsString() art: string;
   @Type(() => Number) @IsInt() hue: number;
 

@@ -2,153 +2,169 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import ProductArt from "./ProductArt";
+import ProductImage from "./ProductImage";
+import WordReveal from "./WordReveal";
 import type { ArtKey } from "@/lib/catalog";
-import { primaryStore } from "@/lib/store-location";
+import type { HeroSlide } from "@/lib/home-content";
 
-type Slide = {
-  eyebrow: string;
-  title: string;
-  cta: string;
-  href: string;
-  from: string;
-  to: string;
-  props: { art: ArtKey; hue: number }[];
-};
-
-const slides: Slide[] = [
-  {
-    eyebrow: "Open 24 hours · Delivered in 30 minutes",
-    title: "The whole store,\nbrought to your door",
-    cta: "Start shopping",
-    href: "/shop",
-    from: "#0f4c3a",
-    to: "#1f8a5f",
-    props: [
-      { art: "coffee", hue: 30 },
-      { art: "donut", hue: 25 },
-      { art: "soda", hue: 205 },
-      { art: "chips", hue: 45 },
-    ],
-  },
-  {
-    eyebrow: "Breakfast served from 5am",
-    title: "Hot food and\nfresh coffee",
-    cta: "Shop the bakery",
-    href: "/department/bakery",
-    from: "#8a3f12",
-    to: "#e08a2c",
-    props: [
-      { art: "sandwich", hue: 40 },
-      { art: "muffin", hue: 280 },
-      { art: "hotdog", hue: 15 },
-      { art: "coffee", hue: 25 },
-    ],
-  },
-  {
-    eyebrow: "Everything for the road",
-    title: "Automotive essentials\nwithout the detour",
-    cta: "Shop automotive",
-    href: "/department/automotive",
-    from: "#1e3a6b",
-    to: "#3f7fc4",
-    props: [
-      { art: "oil", hue: 200 },
-      { art: "wiper", hue: 210 },
-      { art: "phoneCharger", hue: 220 },
-      { art: "coolant", hue: 195 },
-    ],
-  },
-  {
-    eyebrow: `Regular $${primaryStore.fuelPrices[0].price.toFixed(2)}/gal today`,
-    title: "Fill up, then\nfill the basket",
-    cta: "See today's deals",
-    href: "/deals",
-    from: "#6b2f6b",
-    to: "#a855a8",
-    props: [
-      { art: "energy", hue: 265 },
-      { art: "candy", hue: 330 },
-      { art: "jerky", hue: 20 },
-      { art: "gum", hue: 175 },
-    ],
-  },
-];
-
-export default function HeroCarousel() {
+export default function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
 
-  const go = useCallback((dir: number) => {
-    setIndex((i) => (i + dir + slides.length) % slides.length);
-  }, []);
+  const go = useCallback(
+    (dir: number) => setIndex((i) => (i + dir + slides.length) % slides.length),
+    [slides.length],
+  );
 
   useEffect(() => {
     if (paused) return;
-    const id = setInterval(() => go(1), 6000);
+    const id = setInterval(() => go(1), 6500);
     return () => clearInterval(id);
   }, [go, paused]);
 
-  const slide = slides[index];
+  /* A slide can disappear while the carousel is mid-rotation if the content is
+     edited in admin, so fall back to the first rather than indexing past the end. */
+  const slide = slides[index] ?? slides[0];
+  if (!slide) return null;
 
   return (
     <section
-      className="relative"
+      className="relative overflow-hidden bg-black"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       aria-roledescription="carousel"
       aria-label="Featured promotions"
     >
+      {/* Ambient glow, tinted to the active slide. */}
       <div
-        className="relative h-[260px] overflow-hidden transition-[background] duration-500 sm:h-[330px] lg:h-[410px]"
-        style={{ background: `linear-gradient(110deg, ${slide.from}, ${slide.to})` }}
-      >
-        <div className="mx-auto flex h-full max-w-[1500px] items-center gap-6 px-10 pb-16 sm:px-14 sm:pb-24 lg:px-20 lg:pb-28">
-          <div className="z-10 max-w-full shrink-0 text-white sm:max-w-[46%]">
-            <p className="mb-1 text-sm font-semibold sm:text-base">{slide.eyebrow}</p>
-            <h2 className="whitespace-pre-line text-xl font-bold leading-tight sm:text-3xl lg:text-[40px]">
-              {slide.title}
-            </h2>
-            <Link
-              href={slide.href}
-              className="mt-4 inline-block whitespace-nowrap rounded-full bg-white/95 px-4 py-1.5 text-xs font-semibold text-[#0f1111] transition hover:bg-white sm:text-sm"
-            >
-              {slide.cta}
-            </Link>
+        className="pointer-events-none absolute -right-[12%] top-1/2 h-[130%] w-[70%] -translate-y-1/2 rounded-full opacity-40 blur-[110px] transition-[background] duration-700"
+        style={{ background: slide.accent }}
+        aria-hidden="true"
+      />
 
-            <div className="mt-4 flex gap-2">
-              {slides.map((s, i) => (
-                <button
-                  key={s.href}
-                  type="button"
-                  onClick={() => setIndex(i)}
-                  aria-label={`Go to slide ${i + 1}`}
-                  aria-current={i === index}
-                  className={`h-2 rounded-full transition-all ${i === index ? "w-6 bg-white" : "w-2 bg-white/50"}`}
-                />
-              ))}
-            </div>
+      <div className="relative mx-auto grid max-w-[1500px] items-center gap-6 px-5 py-12 sm:px-8 lg:grid-cols-[minmax(0,46%)_minmax(0,1fr)] lg:gap-10 lg:px-12 lg:py-20">
+        {/* Copy — re-keyed on index so the entrance replays each slide. */}
+        <div key={`copy-${index}`} className="z-10 max-w-xl">
+          <p className="anim-rise eyebrow" style={{ animationDelay: "40ms" }}>
+            {slide.eyebrow}
+          </p>
+
+          <WordReveal
+            as="h1"
+            text={slide.title}
+            delay={110}
+            className="mt-3 text-[34px] font-extrabold leading-[0.95] tracking-tight text-white sm:text-[52px] lg:text-[64px]"
+          />
+
+          <p
+            className="anim-rise mt-4 max-w-md text-sm leading-6 text-ink-soft sm:text-base"
+            style={{ animationDelay: "190ms" }}
+          >
+            {slide.blurb}
+          </p>
+
+          <div
+            className="anim-rise mt-7 flex flex-wrap items-center gap-3"
+            style={{ animationDelay: "270ms" }}
+          >
+            <Link href={slide.ctaHref} className="btn-pill btn-buy px-7 py-3 text-sm">
+              {slide.ctaLabel}
+            </Link>
+            <Link href="/contact" className="btn-pill btn-ghost px-7 py-3 text-sm">
+              Find a store
+            </Link>
           </div>
 
-          <div className="hidden flex-1 items-center justify-end gap-3 sm:flex lg:gap-6">
-            {slide.props.map((p, i) => (
-              <div
-                key={`${index}-${i}`}
-                className="w-[22%] max-w-[150px] -rotate-3 rounded-xl bg-white/15 p-2 backdrop-blur-sm even:rotate-3"
-              >
-                <ProductArt art={p.art} hue={p.hue} className="h-full w-full" bare />
-              </div>
+          {/* Progress bars double as slide controls. */}
+          <div className="mt-9 flex gap-2">
+            {slides.map((s, i) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setIndex(i)}
+                aria-label={`Go to slide ${i + 1}`}
+                aria-current={i === index}
+                className={`h-1 rounded-full transition-all duration-500 ${
+                  i === index ? "w-10 bg-brand-green" : "w-5 bg-white/25 hover:bg-white/50"
+                }`}
+              />
             ))}
           </div>
         </div>
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-sma-canvas" />
+        {/* Art: promo badge plus floating product tiles. */}
+        <div
+          key={`art-${index}`}
+          className="relative z-10 hidden min-h-[320px] items-center justify-center lg:flex"
+        >
+          <div
+            className="anim-pop absolute left-0 top-2 z-20 grid h-[132px] w-[132px] place-items-center rounded-[26px] px-3 text-center shadow-2xl"
+            style={{ background: slide.accent, animationDelay: "120ms" }}
+          >
+            <span>
+              <span className="block text-[40px] font-extrabold leading-none tracking-tight text-white">
+                {slide.badgeBig}
+              </span>
+              <span className="mt-1.5 block text-[10px] font-extrabold leading-tight tracking-[0.1em] text-white/90">
+                {slide.badgeSmall}
+              </span>
+            </span>
+          </div>
+
+          <div className="flex w-full items-center justify-end gap-4 pl-24">
+            {/* Four tiles, each an uploaded image when one is set and the
+                generated glyph otherwise, so a half-filled slide still looks
+                deliberate rather than showing gaps. */}
+            {Array.from({ length: 4 }).map((_, i) => {
+              const image = slide.tileImages?.[i];
+              const art = (slide.fallbackArt?.[i] ?? "chips") as ArtKey;
+              if (!image && !slide.fallbackArt?.[i]) return null;
+
+              return (
+                <div
+                  key={`${index}-${i}`}
+                  className="anim-pop w-[23%] max-w-[168px]"
+                  style={{ animationDelay: `${180 + i * 90}ms` }}
+                >
+                  <div
+                    className="anim-float overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06] p-3 backdrop-blur-sm"
+                    style={
+                      {
+                        "--tilt": i % 2 === 0 ? "-4deg" : "4deg",
+                        animationDelay: `${i * 420}ms`,
+                      } as React.CSSProperties
+                    }
+                  >
+                    <ProductImage
+                      imageUrl={image || null}
+                      art={art}
+                      hue={200}
+                      alt=""
+                      bare
+                      className="h-full w-full rounded-lg"
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
-      <button type="button" onClick={() => go(-1)} aria-label="Previous promotion" className="absolute left-0 top-0 flex h-[75%] w-10 items-center justify-center text-white/85 transition hover:bg-white/10 hover:text-white sm:w-14">
+      <button
+        type="button"
+        onClick={() => go(-1)}
+        aria-label="Previous promotion"
+        className="absolute left-1 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-line bg-black/50 text-white/80 backdrop-blur transition hover:border-white hover:text-white sm:grid"
+      >
         <Chevron dir="left" />
       </button>
-      <button type="button" onClick={() => go(1)} aria-label="Next promotion" className="absolute right-0 top-0 flex h-[75%] w-10 items-center justify-center text-white/85 transition hover:bg-white/10 hover:text-white sm:w-14">
+      <button
+        type="button"
+        onClick={() => go(1)}
+        aria-label="Next promotion"
+        className="absolute right-1 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-line bg-black/50 text-white/80 backdrop-blur transition hover:border-white hover:text-white sm:grid"
+      >
         <Chevron dir="right" />
       </button>
     </section>
@@ -157,7 +173,7 @@ export default function HeroCarousel() {
 
 function Chevron({ dir }: { dir: "left" | "right" }) {
   return (
-    <svg viewBox="0 0 24 24" className="h-9 w-9" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true">
       <path d={dir === "left" ? "M15 5l-7 7 7 7" : "M9 5l7 7-7 7"} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );

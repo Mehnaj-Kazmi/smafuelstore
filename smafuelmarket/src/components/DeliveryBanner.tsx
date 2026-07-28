@@ -47,15 +47,18 @@ export default function DeliveryBanner() {
 
   const message =
     status === "denied"
-      ? "Location access was blocked, so we can't confirm you're inside our delivery area."
+      ? "Location access was blocked, so we can't show your delivery time yet."
       : status === "unsupported"
-        ? "This browser doesn't support location lookup, so we can't confirm your delivery area."
+        ? "This browser doesn't support location lookup, so we can't show your delivery time yet."
         : "We couldn't read your location just now.";
 
+  /* Shopping is unaffected here — only a verified out-of-range result blocks
+     ordering — so this reads as an offer to improve the experience rather
+     than a warning that something is broken. */
   return (
-    <Bar tone="warn">
-      <strong>Ordering is disabled.</strong> {message} Browsing works as normal.
-      <Actions onRetry={check} onSimulate={simulateInRange} retryLabel="Try again" />
+    <Bar tone="neutral">
+      {message} You can shop as normal; we&apos;ll confirm delivery from the address at checkout.
+      <Actions onRetry={check} onSimulate={simulateInRange} retryLabel="Share location" />
     </Bar>
   );
 }
@@ -82,12 +85,13 @@ function Actions({
 }
 
 function Bar({ tone, children }: { tone: "ok" | "warn" | "neutral"; children: React.ReactNode }) {
+  /* Tinted washes over the black canvas, rather than light pastel bars. */
   const cls =
     tone === "ok"
-      ? "bg-[#e7f5ec] text-[#0d5c33] border-[#a9d8bd]"
+      ? "bg-brand-green/12 text-[#7ef0ac] border-brand-green/35"
       : tone === "warn"
-        ? "bg-[#fdf3e3] text-[#7a4a05] border-[#f0d4a3]"
-        : "bg-[#eef2f5] text-sma-muted border-sma-border";
+        ? "bg-brand-orange/12 text-[#ffc38c] border-brand-orange/35"
+        : "bg-surface text-ink-soft border-line";
 
   return (
     <div className={`border-b ${cls}`} role="status">

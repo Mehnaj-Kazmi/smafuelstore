@@ -90,6 +90,9 @@ model Product {
   lowStockAt     Int
   rating         Float    @default(0)
   reviews        Int      @default(0)
+  /// Uploaded photograph, served from the API's /uploads path. When null the
+  /// storefront falls back to the generated `art` + `hue` illustration.
+  imageUrl       String?
   art            String
   hue            Int
   ageRestricted  Boolean  @default(false)
@@ -101,6 +104,7 @@ model Product {
   updatedAt DateTime @updatedAt
 
   orderItems OrderItem[]
+  deals      Deal[]      @relation("DealProducts")
 }
 
 model StoreLocation {
@@ -123,6 +127,76 @@ model FuelPrice {
   store         StoreLocation @relation(fields: [storeId], references: [id], onDelete: Cascade)
   grade         String
   price         Decimal       @db.Decimal(10, 2)
+}
+
+/// A slide in the home page hero carousel.
+model HeroSlide {
+  id         String   @id @default(cuid())
+  sortOrder  Int      @default(0)
+  eyebrow    String
+  title      String
+  blurb      String
+  badgeBig   String
+  badgeSmall String
+  ctaLabel   String
+  ctaHref    String
+  /// Hex colour driving the badge and the ambient glow behind the art.
+  accent     String   @default("#00b04f")
+  /// Uploaded artwork for the floating tiles, in display order. Slots left
+  /// empty fall back to the generated illustration named in `fallbackArt`.
+  tileImages String[]
+  /// Glyph keys used when a tile has no uploaded image.
+  fallbackArt String[]
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+/// One of the four cards in the grid under the hero.
+model ShowcaseCard {
+  id        String   @id @default(cuid())
+  sortOrder Int      @default(0)
+  title     String
+  linkLabel String
+  linkHref  String
+  /// `grid` shows a 2x2 of tiles, `single` one large image.
+  variant   String   @default("grid")
+  /// Array of { label, href, imageUrl, art, hue }. Held as JSON rather than a
+  /// child table because tiles are only ever read and written with their card,
+  /// never queried on their own — a relation would add joins and a second
+  /// editing surface for no gain.
+  tiles     Json
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum DealKind {
+  flash
+  percent
+  bogo
+  weekend
+}
+
+/// A storefront promotion. `products` is a many-to-many because a single deal
+/// can cover a bundle (chips + jerky + nuts) and a product can appear in more
+/// than one promotion at a time.
+model Deal {
+  id          String   @id @default(cuid())
+  kind        DealKind
+  title       String
+  detail      String
+  /// Percentage off, for `percent`, `flash` and `weekend` deals.
+  percentOff  Int?
+  /// Hours the promotion runs for. Null means ongoing.
+  endsInHours Int?
+  /// Promotional artwork, served from the API's /uploads path.
+  imageUrl    String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products Product[] @relation("DealProducts")
 }
 
 enum OrderStatus {
