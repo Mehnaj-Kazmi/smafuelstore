@@ -69,12 +69,24 @@ export function haversineMiles(
 
 export type NearestStore = { store: StoreLocation; distance: number; inRange: boolean };
 
-/** Closest store to the customer, and whether they fall inside its delivery radius. */
-export function nearestStore(from: { lat: number; lng: number }): NearestStore {
-  let best = stores[0];
-  let bestDistance = haversineMiles(from, stores[0]);
+/**
+ * Closest store to the customer, and whether they fall inside its delivery
+ * radius.
+ *
+ * Takes the list to search so the caller can pass the stores loaded from the
+ * API. Defaulting to the seed list keeps older call sites working, but anything
+ * deciding whether a customer can order must pass the live list — measuring
+ * against a stale coordinate rejects everyone near the real shop.
+ */
+export function nearestStore(
+  from: { lat: number; lng: number },
+  list: StoreLocation[] = stores,
+): NearestStore {
+  const pool = list.length > 0 ? list : stores;
+  let best = pool[0];
+  let bestDistance = haversineMiles(from, pool[0]);
 
-  for (const store of stores.slice(1)) {
+  for (const store of pool.slice(1)) {
     const d = haversineMiles(from, store);
     if (d < bestDistance) {
       best = store;

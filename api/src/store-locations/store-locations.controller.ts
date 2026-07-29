@@ -1,5 +1,19 @@
-import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { StoreLocationsService } from './store-locations.service';
+import { UpdateStoreDto } from './dto/update-store.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { Role } from '../../generated/prisma/client';
 
 @Controller('store-locations')
 export class StoreLocationsController {
@@ -18,5 +32,13 @@ export class StoreLocationsController {
       throw new BadRequestException('lat and lng query params are required numbers');
     }
     return this.storeLocations.nearest(latNum, lngNum);
+  }
+
+  // Admin-only. The coordinates here decide who the shop will deliver to.
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() dto: UpdateStoreDto) {
+    return this.storeLocations.update(id, dto);
   }
 }

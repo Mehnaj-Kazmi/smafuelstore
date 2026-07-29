@@ -12,6 +12,8 @@ export type Deal = {
   percentOff?: number;
   /** Hours from the session start that a flash deal runs for. */
   endsInHours?: number;
+  /** Promotional artwork uploaded in the admin panel. */
+  imageUrl?: string | null;
 };
 
 export const dealKindLabel: Record<DealKind, string> = {
@@ -79,8 +81,8 @@ export const deals: Deal[] = [
 ];
 
 /** Products carrying a live discount, best discount first. */
-export function dealProducts(source: Product[] = products): Product[] {
-  const ids = new Set(deals.flatMap((d) => d.productIds));
+export function dealProducts(source: Product[] = products, dealList: Deal[] = deals): Product[] {
+  const ids = new Set(dealList.flatMap((d) => d.productIds));
   return source
     .filter((p) => ids.has(p.id) || (p.listPrice != null && p.listPrice > p.price))
     .sort((a, b) => {
@@ -90,8 +92,8 @@ export function dealProducts(source: Product[] = products): Product[] {
     });
 }
 
-export function dealsForProduct(id: string): Deal[] {
-  return deals.filter((d) => d.productIds.includes(id));
+export function dealsForProduct(id: string, dealList: Deal[] = deals): Deal[] {
+  return dealList.filter((d) => d.productIds.includes(id));
 }
 
 /* ---- Coupons ------------------------------------------------------------ */

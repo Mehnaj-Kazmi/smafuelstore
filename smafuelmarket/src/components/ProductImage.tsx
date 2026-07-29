@@ -28,6 +28,7 @@ export default function ProductImage({
   className,
   bare = false,
   eager = false,
+  transparent = false,
 }: {
   imageUrl?: string | null;
   art: ArtKey;
@@ -37,6 +38,13 @@ export default function ProductImage({
   bare?: boolean;
   /** Set on above-the-fold images so they are not deferred. */
   eager?: boolean;
+  /**
+   * Drops the white backdrop, for artwork placed on a coloured panel where a
+   * white rectangle would read as a sticker rather than as the product. Only
+   * worth setting for images that have actually been cut out — anything still
+   * carrying a white background in its pixels will look the same either way.
+   */
+  transparent?: boolean;
 }) {
   if (!imageUrl) return <ProductArt art={art} hue={hue} className={className} bare={bare} />;
 
@@ -66,7 +74,7 @@ export default function ProductImage({
       loading={eager ? "eager" : "lazy"}
       fetchPriority={eager ? "high" : undefined}
       decoding="async"
-      className={`${className ?? ""} bg-white object-contain`}
+      className={`${className ?? ""} object-contain ${transparent ? "" : "bg-white"}`}
     />
   );
 }

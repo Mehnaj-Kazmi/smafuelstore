@@ -30,6 +30,16 @@ type ShowcaseTile = {
   hue: number;
 };
 
+type Department = {
+  slug: string;
+  name: string;
+  blurb: string;
+  imageUrl: string | null;
+  art: string;
+  hue: number;
+  sortOrder: number;
+};
+
 type ShowcaseCard = {
   id: string;
   sortOrder: number;
@@ -44,18 +54,21 @@ type ShowcaseCard = {
 export default function HomepageAdmin() {
   const [slides, setSlides] = useState<HeroSlide[] | null>(null);
   const [cards, setCards] = useState<ShowcaseCard[] | null>(null);
+  const [departments, setDepartments] = useState<Department[] | null>(null);
   const [error, setError] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const [s, c] = await Promise.all([
+      const [s, c, d] = await Promise.all([
         api.get<HeroSlide[]>("/home/hero-slides?includeInactive=true"),
         api.get<ShowcaseCard[]>("/home/showcase-cards?includeInactive=true"),
+        api.get<Department[]>("/departments"),
       ]);
       setSlides(s);
       setCards(c);
+      setDepartments(d);
       setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load homepage content");
@@ -87,6 +100,32 @@ export default function HomepageAdmin() {
         ) ?? null,
     );
     setSavedId(null);
+  }
+
+  function editDepartment(slug: string, patch: Partial<Department>) {
+    setDepartments((prev) => prev?.map((d) => (d.slug === slug ? { ...d, ...patch } : d)) ?? null);
+    setSavedId(null);
+  }
+
+  async function saveDepartment(dept: Department) {
+    setSavingId(dept.slug);
+    setError("");
+    try {
+      await api.patch(`/departments/${dept.slug}`, {
+        name: dept.name,
+        blurb: dept.blurb,
+        imageUrl: dept.imageUrl,
+        art: dept.art,
+        hue: dept.hue,
+        sortOrder: dept.sortOrder,
+      });
+      setSavedId(dept.slug);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setSavingId(null);
+    }
   }
 
   async function saveSlide(slide: HeroSlide) {
@@ -155,7 +194,11 @@ export default function HomepageAdmin() {
           value={String(slides?.reduce((n, s) => n + s.tileImages.filter(Boolean).length, 0) ?? 0)}
           sub={`of ${(slides?.length ?? 0) * 4} tiles`}
         />
-        <Stat label="Showcase cards" value={String(cards?.length ?? 0)} />
+        <Stat
+          label="Department photos"
+          value={String(departments?.filter((d) => d.imageUrl).length ?? 0)}
+          sub={`of ${departments?.length ?? 0} departments`}
+        />
         <Stat
           label="Card photos set"
           value={String(cards?.reduce((n, c) => n + c.tiles.filter((t) => t.imageUrl).length, 0) ?? 0)}
@@ -168,7 +211,7 @@ export default function HomepageAdmin() {
       <Panel title="Hero carousel">
         <p className="mb-5 text-[13px] text-ink-faint">
           The rotating banner at the top of the home page. Each slide has four floating tiles —
-          upload a photo for any of them, or leave it empty to keep the drawn artwork.
+          upload a photo for any of them, or leave it empty to keep the drawn artwork. Backgrounds are removed automatically so the product sits directly on the slide.
         </p>
 
         {!slides ? (
@@ -233,6 +276,8 @@ export default function HomepageAdmin() {
                   {[0, 1, 2, 3].map((i) => (
                     <ImageUploadField
                       key={i}
+                      mode="cutout"
+                      label={`Tile ${i + 1} photo`}
                       value={slide.tileImages[i] ?? ""}
                       onChange={(url) => {
                         const next = [...slide.tileImages];
@@ -254,6 +299,71 @@ export default function HomepageAdmin() {
                     {savingId === slide.id ? "Saving…" : "Save slide"}
                   </button>
                   {savedId === slide.id && (
+                    <span className="text-[13px] font-bold text-brand-green">Saved ✓</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Panel>
+
+      <Panel title="Shop by department">
+        <p className="mb-5 text-[13px] text-ink-faint">
+          The circular icons in the &ldquo;Shop by department&rdquo; row, also used on the departments
+          page. Upload a photo to replace the drawn icon, or leave it empty to keep the drawing.
+        </p>
+
+        {!departments ? (
+          <p className="text-[13px] text-ink-faint">Loading…</p>
+        ) : (
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            {departments.map((dept) => (
+              <div key={dept.slug} className="rounded-xl border border-line bg-surface-2 p-5">
+                <div className="mb-4 flex items-center gap-3">
+                  <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full border border-line bg-white">
+                    {dept.imageUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element -- admin thumbnail */
+                      <img src={imageSrc(dept.imageUrl)} alt="" className="h-full w-full object-contain" />
+                    ) : (
+                      <span className="text-[9px] text-black/50">drawn</span>
+                    )}
+                  </span>
+                  <strong className="text-white">{dept.name}</strong>
+                  <span className="ml-auto font-mono text-[11px] text-ink-faint">{dept.slug}</span>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Field label="Name" value={dept.name} onChange={(v) => editDepartment(dept.slug, { name: v })} />
+                  <Field
+                    label="Position in the row"
+                    value={String(dept.sortOrder)}
+                    onChange={(v) => editDepartment(dept.slug, { sortOrder: Number(v) || 0 })}
+                  />
+                  <div className="sm:col-span-2">
+                    <Field label="Blurb" value={dept.blurb} onChange={(v) => editDepartment(dept.slug, { blurb: v })} />
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <ImageUploadField
+                    mode="cutout"
+                    label="Department photo"
+                    value={dept.imageUrl ?? ""}
+                    onChange={(url) => editDepartment(dept.slug, { imageUrl: url || null })}
+                  />
+                </div>
+
+                <div className="mt-4 flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => saveDepartment(dept)}
+                    disabled={savingId === dept.slug}
+                    className="btn-pill btn-cart disabled:opacity-60"
+                  >
+                    {savingId === dept.slug ? "Saving…" : "Save department"}
+                  </button>
+                  {savedId === dept.slug && (
                     <span className="text-[13px] font-bold text-brand-green">Saved ✓</span>
                   )}
                 </div>
@@ -315,6 +425,8 @@ export default function HomepageAdmin() {
 
                       <div className="mt-3">
                         <ImageUploadField
+                          mode="cutout"
+                          label="Tile photo"
                           value={tile.imageUrl ?? ""}
                           onChange={(url) => editTile(card.id, i, { imageUrl: url || null })}
                         />

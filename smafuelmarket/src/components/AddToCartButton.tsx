@@ -5,6 +5,7 @@ import { useCart } from "@/lib/cart";
 import { useDelivery } from "@/lib/delivery";
 import { useAuthGate } from "@/lib/auth-gate";
 import { useCatalog } from "@/lib/catalog-context";
+import { useToast } from "@/lib/toast";
 
 /**
  * The single place ordering is gated. Every add-to-cart in the app goes through
@@ -24,10 +25,11 @@ export default function AddToCartButton({
   label?: string;
   block?: boolean;
 }) {
-  const { add } = useCart();
+  const { add, items, setQuantity, remove } = useCart();
   const { canOrder, ready } = useDelivery();
   const { requireAuth } = useAuthGate();
   const { getProduct } = useCatalog();
+  const { notify } = useToast();
   const [added, setAdded] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -44,10 +46,25 @@ export default function AddToCartButton({
   function handleClick() {
     if (disabled) return;
     if (!requireAuth("cart")) return;
+
+    /* Captured before the change so Undo restores the exact previous quantity
+       rather than assuming the item was not already in the basket. */
+    const before = items.find((i) => i.productId === productId)?.quantity ?? 0;
+
     add(productId, quantity);
     setAdded(true);
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => setAdded(false), 1600);
+
+    notify({
+      message: `Added to basket`,
+      detail: product ? `${quantity} × ${product.title}` : undefined,
+      tone: "good",
+      action: {
+        label: "Undo",
+        run: () => (before === 0 ? remove(productId) : setQuantity(productId, before)),
+      },
+    });
   }
 
   const text = soldOut

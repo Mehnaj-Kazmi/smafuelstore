@@ -1,16 +1,16 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useReducer } from "react";
+import { createContext, useContext, useEffect, useMemo, useReducer, useRef } from "react";
 import { type Product } from "./catalog";
 import { useCatalog } from "./catalog-context";
-import type { CartLine, Order } from "./orders";
+import { useAuth } from "./auth";
+import type { CartLine } from "./orders";
 
 export type { CartLine, Order, OrderStatus } from "./orders";
 
 type State = {
   lines: CartLine[];
   wishlist: string[];
-  orders: Order[];
   hydrated: boolean;
 };
 
@@ -20,12 +20,25 @@ type Action =
   | { type: "setQuantity"; productId: string; quantity: number }
   | { type: "remove"; productId: string }
   | { type: "clear" }
-  | { type: "toggleWish"; productId: string }
-  | { type: "placeOrder"; order: Order };
+  | { type: "toggleWish"; productId: string };
 
-const STORAGE_KEY = "sma-gas-store:v1";
+/*
+ * Basket and wishlist are stored per account.
+ *
+ * They used to share one key for the whole browser, so signing out and signing
+ * in as someone else showed the previous person's saved items — on a shared or
+ * demo machine that is a privacy leak, not just a glitch. Keying on the user id
+ * means each account gets its own bucket and a returning customer finds their
+ * own basket exactly as they left it.
+ */
+const STORAGE_PREFIX = "sma-gas-store:v2";
+const GUEST = "guest";
 
-const initial: State = { lines: [], wishlist: [], orders: [], hydrated: false };
+function storageKey(userId: string | null) {
+  return `${STORAGE_PREFIX}:${userId ?? GUEST}`;
+}
+
+const initial: State = { lines: [], wishlist: [], hydrated: false };
 
 /**
  * Built per-catalogue rather than declared once at module scope, so the stock
@@ -34,65 +47,61 @@ const initial: State = { lines: [], wishlist: [], orders: [], hydrated: false };
  */
 function makeReducer(getProduct: (id: string) => Product | undefined) {
   return function reducer(state: State, action: Action): State {
-  switch (action.type) {
-    case "hydrate":
-      return { ...state, ...action.state, hydrated: true };
+    switch (action.type) {
+      case "hydrate":
+        return { ...state, ...action.state, hydrated: true };
 
-    case "add": {
-      const cap = getProduct(action.productId)?.stock ?? 99;
-      if (cap <= 0) return state;
-      const existing = state.lines.find((l) => l.productId === action.productId);
-      if (existing) {
+      case "add": {
+        const cap = getProduct(action.productId)?.stock ?? 99;
+        if (cap <= 0) return state;
+        const existing = state.lines.find((l) => l.productId === action.productId);
+        if (existing) {
+          return {
+            ...state,
+            lines: state.lines.map((l) =>
+              l.productId === action.productId
+                ? { ...l, quantity: Math.min(cap, l.quantity + action.quantity) }
+                : l,
+            ),
+          };
+        }
+        return {
+          ...state,
+          lines: [...state.lines, { productId: action.productId, quantity: Math.min(cap, action.quantity) }],
+        };
+      }
+
+      case "setQuantity": {
+        if (action.quantity <= 0) {
+          return { ...state, lines: state.lines.filter((l) => l.productId !== action.productId) };
+        }
+        const cap = getProduct(action.productId)?.stock ?? 99;
         return {
           ...state,
           lines: state.lines.map((l) =>
-            l.productId === action.productId
-              ? { ...l, quantity: Math.min(cap, l.quantity + action.quantity) }
-              : l,
+            l.productId === action.productId ? { ...l, quantity: Math.min(cap, action.quantity) } : l,
           ),
         };
       }
-      return {
-        ...state,
-        lines: [...state.lines, { productId: action.productId, quantity: Math.min(cap, action.quantity) }],
-      };
-    }
 
-    case "setQuantity": {
-      if (action.quantity <= 0) {
+      case "remove":
         return { ...state, lines: state.lines.filter((l) => l.productId !== action.productId) };
-      }
-      const cap = getProduct(action.productId)?.stock ?? 99;
-      return {
-        ...state,
-        lines: state.lines.map((l) =>
-          l.productId === action.productId ? { ...l, quantity: Math.min(cap, action.quantity) } : l,
-        ),
-      };
+
+      case "clear":
+        return { ...state, lines: [] };
+
+      case "toggleWish":
+        return {
+          ...state,
+          wishlist: state.wishlist.includes(action.productId)
+            ? state.wishlist.filter((id) => id !== action.productId)
+            : [...state.wishlist, action.productId],
+        };
+
+      default:
+        return state;
     }
-
-    case "remove":
-      return { ...state, lines: state.lines.filter((l) => l.productId !== action.productId) };
-
-    case "clear":
-      return { ...state, lines: [] };
-
-    case "toggleWish":
-      return {
-        ...state,
-        wishlist: state.wishlist.includes(action.productId)
-          ? state.wishlist.filter((id) => id !== action.productId)
-          : [...state.wishlist, action.productId],
-      };
-
-    case "placeOrder":
-      return { ...state, lines: [], orders: [action.order, ...state.orders] };
-
-    default:
-      return state;
-  }
-}
-
+  };
 }
 
 export type CartItem = CartLine & { product: Product; lineTotal: number };
@@ -100,7 +109,6 @@ export type CartItem = CartLine & { product: Product; lineTotal: number };
 type Value = {
   items: CartItem[];
   wishlist: Product[];
-  orders: Order[];
   hydrated: boolean;
   count: number;
   subtotal: number;
@@ -113,44 +121,89 @@ type Value = {
   clear: () => void;
   toggleWish: (productId: string) => void;
   isWished: (productId: string) => boolean;
-  placeOrder: (details: Omit<Order, "id" | "placedAt" | "lines" | "status">) => Order;
 };
 
 const CartContext = createContext<Value | null>(null);
 
+function read(key: string): { lines: CartLine[]; wishlist: string[] } {
+  try {
+    const raw = window.localStorage.getItem(key);
+    const parsed = raw ? (JSON.parse(raw) as Partial<State>) : {};
+    return { lines: parsed.lines ?? [], wishlist: parsed.wishlist ?? [] };
+  } catch {
+    return { lines: [], wishlist: [] };
+  }
+}
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const { getProduct } = useCatalog();
+  const { user, hydrated: authReady } = useAuth();
   const reducer = useMemo(() => makeReducer(getProduct), [getProduct]);
   const [state, dispatch] = useReducer(reducer, initial);
 
+  const userId = user?.id ?? null;
+  /** Which bucket the current state came from, so we never save into another. */
+  const loadedFor = useRef<string | null>(null);
+
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      const parsed = raw ? (JSON.parse(raw) as Partial<State>) : {};
-      dispatch({
-        type: "hydrate",
-        state: {
-          lines: (parsed.lines ?? []).filter((l) => Boolean(getProduct(l.productId))),
-          wishlist: (parsed.wishlist ?? []).filter((id) => Boolean(getProduct(id))),
-          orders: parsed.orders ?? [],
-        },
-      });
-    } catch {
-      dispatch({ type: "hydrate", state: { lines: [], wishlist: [], orders: [] } });
+    if (!authReady) return;
+
+    const key = storageKey(userId);
+    const own = read(key);
+
+    /*
+     * A basket built while signed out follows the customer into their account.
+     * This matters because adding to the cart is what sends a guest to sign in
+     * — losing the basket at that exact moment would be the worst possible
+     * time. The wishlist is deliberately not merged: saved items are personal,
+     * and inheriting a stranger's is the bug this whole change fixes.
+     */
+    let lines = own.lines;
+    if (userId) {
+      const guest = read(storageKey(null));
+      if (guest.lines.length) {
+        const merged = [...own.lines];
+        for (const line of guest.lines) {
+          const existing = merged.find((l) => l.productId === line.productId);
+          if (existing) existing.quantity += line.quantity;
+          else merged.push({ ...line });
+        }
+        lines = merged;
+        try {
+          window.localStorage.removeItem(storageKey(null));
+        } catch {
+          /* the guest bucket is replaced on next write anyway */
+        }
+      }
     }
-  }, [getProduct]);
+
+    loadedFor.current = userId;
+    dispatch({
+      type: "hydrate",
+      state: {
+        /* Drop anything no longer in the catalogue, so a deleted product cannot
+           sit in a basket forever as an unrenderable line. */
+        lines: lines.filter((l) => Boolean(getProduct(l.productId))),
+        wishlist: own.wishlist.filter((id) => Boolean(getProduct(id))),
+      },
+    });
+  }, [authReady, userId, getProduct]);
 
   useEffect(() => {
     if (!state.hydrated) return;
+    /* Only write once the state belongs to the signed-in user, otherwise the
+       moment of switching accounts would copy one basket into the other. */
+    if (loadedFor.current !== userId) return;
+
     try {
       window.localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ lines: state.lines, wishlist: state.wishlist, orders: state.orders }),
+        storageKey(userId),
+        JSON.stringify({ lines: state.lines, wishlist: state.wishlist }),
       );
     } catch {
       /* private mode or quota — the cart still works for this session */
     }
-  }, [state.lines, state.wishlist, state.orders, state.hydrated]);
+  }, [state.lines, state.wishlist, state.hydrated, userId]);
 
   const value = useMemo<Value>(() => {
     const items: CartItem[] = state.lines.flatMap((line) => {
@@ -167,7 +220,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         const p = getProduct(id);
         return p ? [p] : [];
       }),
-      orders: state.orders,
       hydrated: state.hydrated,
       count: items.reduce((s, i) => s + i.quantity, 0),
       subtotal,
@@ -182,17 +234,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       clear: () => dispatch({ type: "clear" }),
       toggleWish: (productId) => dispatch({ type: "toggleWish", productId }),
       isWished: (productId) => state.wishlist.includes(productId),
-      placeOrder: (details) => {
-        const order: Order = {
-          ...details,
-          id: `GS-${Date.now().toString(36).toUpperCase()}`,
-          placedAt: new Date().toISOString(),
-          lines: state.lines,
-          status: "confirmed",
-        };
-        dispatch({ type: "placeOrder", order });
-        return order;
-      },
     };
   }, [state, getProduct]);
 

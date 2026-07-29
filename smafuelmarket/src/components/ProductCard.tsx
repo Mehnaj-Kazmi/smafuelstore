@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import { discountPercent, stockState, type Product } from "@/lib/catalog";
 import { dealsForProduct, dealKindClass, dealKindLabel } from "@/lib/deals";
+import { useDeals } from "@/lib/deals-context";
 import { compactCount, priceParts } from "@/lib/format";
 import ProductImage from "./ProductImage";
 import StarRating from "./StarRating";
@@ -11,7 +14,7 @@ export default function ProductCard({ product, compact = false }: { product: Pro
   const { whole, cents } = priceParts(product.price);
   const off = discountPercent(product);
   const stock = stockState(product);
-  const deal = dealsForProduct(product.id)[0];
+  const deal = dealsForProduct(product.id, useDeals())[0];
 
   return (
     <article className="card lift shine group flex h-full flex-col p-3">

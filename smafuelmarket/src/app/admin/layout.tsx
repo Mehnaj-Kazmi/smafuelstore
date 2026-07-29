@@ -15,6 +15,7 @@ const nav = [
   { label: "Customers", href: "/admin/customers" },
   { label: "Daily deals", href: "/admin/deals" },
   { label: "Homepage", href: "/admin/homepage" },
+  { label: "Store", href: "/admin/store" },
   { label: "Reports", href: "/admin/reports" },
 ];
 

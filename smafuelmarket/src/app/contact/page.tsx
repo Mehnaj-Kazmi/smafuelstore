@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
-import { primaryStore, stores } from "@/lib/store-location";
+import { getStores } from "@/lib/store-source";
 
 export const metadata: Metadata = {
   title: "Contact & locations",
   description: "Store address, opening hours, phone number and delivery area.",
 };
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const stores = await getStores();
+  const primaryStore = stores[0];
+
   return (
     <div className="mx-auto max-w-[1000px] px-4 py-6">
       <div className="rounded-lg bg-sma-navy-light px-6 py-8 text-white">

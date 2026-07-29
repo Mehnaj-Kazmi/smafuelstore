@@ -40,8 +40,14 @@ model Address {
   line1     String
   line2     String?
   city      String
-  state     String
+  /// Optional: the store delivers inside a single metro area, so checkout does
+  /// not ask for a state.
+  state     String?
   zip       String
+  /// Contact name for the driver at the door.
+  recipient String?
+  /// Free-text delivery instructions.
+  notes     String?
   lat       Float?
   lng       Float?
   isDefault Boolean  @default(false)
@@ -54,9 +60,14 @@ model Department {
   slug           String   @id
   name           String
   blurb          String
+  /// Uploaded artwork for the department circle on the home page. When null
+  /// the storefront falls back to the generated `art` + `hue` illustration.
+  imageUrl       String?
   art            String
   hue            Int
   ageRestricted  Boolean  @default(false)
+  /// Controls the order of the "Shop by department" row.
+  sortOrder      Int      @default(0)
 
   categories Category[]
   products   Product[]

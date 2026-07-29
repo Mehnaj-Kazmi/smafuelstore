@@ -2,6 +2,8 @@
 
 import { useCart } from "@/lib/cart";
 import { useAuthGate } from "@/lib/auth-gate";
+import { useCatalog } from "@/lib/catalog-context";
+import { useToast } from "@/lib/toast";
 
 export default function WishlistButton({
   productId,
@@ -14,13 +16,25 @@ export default function WishlistButton({
 }) {
   const { isWished, toggleWish, hydrated } = useCart();
   const { requireAuth } = useAuthGate();
+  const { getProduct } = useCatalog();
+  const { notify } = useToast();
   const active = hydrated && isWished(productId);
 
   /* Saving is tied to an account, so a signed-out visitor is routed to sign in
      rather than silently writing to a wishlist nobody will see again. */
   function handleClick() {
     if (!requireAuth("wishlist")) return;
+
+    const wasSaved = isWished(productId);
     toggleWish(productId);
+
+    const product = getProduct(productId);
+    notify({
+      message: wasSaved ? "Removed from saved items" : "Saved for later",
+      detail: product?.title,
+      tone: wasSaved ? "default" : "good",
+      action: { label: "Undo", run: () => toggleWish(productId) },
+    });
   }
 
   return (

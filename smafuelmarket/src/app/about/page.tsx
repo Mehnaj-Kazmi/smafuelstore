@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { primaryStore } from "@/lib/store-location";
+import { getPrimaryStore } from "@/lib/store-source";
 import { departments, products } from "@/lib/catalog";
 
 export const metadata: Metadata = {
@@ -8,7 +8,9 @@ export const metadata: Metadata = {
   description: "SMA Fuel & Market — a 24-hour gas station and convenience store with 30-minute local delivery.",
 };
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const primaryStore = await getPrimaryStore();
+
   return (
     <div className="mx-auto max-w-[1000px] px-4 py-6">
       <div className="rounded-lg bg-gradient-to-r from-[#0f4c3a] to-[#1f8a5f] px-6 py-10 text-white">

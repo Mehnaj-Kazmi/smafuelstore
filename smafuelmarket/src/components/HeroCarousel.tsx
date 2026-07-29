@@ -111,10 +111,16 @@ export default function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
             </span>
           </div>
 
-          <div className="flex w-full items-center justify-end gap-4 pl-24">
-            {/* Four tiles, each an uploaded image when one is set and the
-                generated glyph otherwise, so a half-filled slide still looks
-                deliberate rather than showing gaps. */}
+          {/*
+            The products sit directly on the slide and overlap along their
+            edges, rather than each being boxed in its own panel. The artwork is
+            cut out, so a panel would only put back the white rectangle the
+            cut-out removed.
+
+            Overlap is a negative margin with a descending z-index, so each item
+            tucks behind the one to its left and the row reads front-to-back.
+          */}
+          <div className="flex w-full items-center justify-end pl-8">
             {Array.from({ length: 4 }).map((_, i) => {
               const image = slide.tileImages?.[i];
               const art = (slide.fallbackArt?.[i] ?? "chips") as ArtKey;
@@ -123,15 +129,27 @@ export default function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
               return (
                 <div
                   key={`${index}-${i}`}
-                  className="anim-pop w-[23%] max-w-[168px]"
-                  style={{ animationDelay: `${180 + i * 90}ms` }}
+                  /*
+                   * `shrink-0` matters: without it flexbox resolves the
+                   * combined width being over 100% by shrinking every tile,
+                   * which silently undoes both the size and the overlap.
+                   *
+                   * The overlap is generous because `object-contain` letterboxes
+                   * each product inside its square — the boxes have to overlap
+                   * considerably before the products themselves appear to.
+                   */
+                  className="anim-pop -ml-[9%] w-[32%] max-w-[270px] shrink-0 first:ml-0"
+                  style={{ animationDelay: `${180 + i * 90}ms`, zIndex: 10 - i }}
                 >
                   <div
-                    className="anim-float overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06] p-3 backdrop-blur-sm"
+                    className="anim-float"
                     style={
                       {
-                        "--tilt": i % 2 === 0 ? "-4deg" : "4deg",
+                        "--tilt": i % 2 === 0 ? "-5deg" : "5deg",
                         animationDelay: `${i * 420}ms`,
+                        /* Grounds the cut-out against the slide, which it needs
+                           now that there is no panel edge to define it. */
+                        filter: "drop-shadow(0 18px 22px rgb(0 0 0 / 0.45))",
                       } as React.CSSProperties
                     }
                   >
@@ -141,7 +159,8 @@ export default function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                       hue={200}
                       alt=""
                       bare
-                      className="h-full w-full rounded-lg"
+                      transparent
+                      className="aspect-square h-full w-full"
                     />
                   </div>
                 </div>

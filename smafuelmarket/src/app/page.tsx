@@ -7,9 +7,11 @@ import FuelPrices from "@/components/FuelPrices";
 import Ticker from "@/components/Ticker";
 import Reveal from "@/components/Reveal";
 import WordReveal from "@/components/WordReveal";
-import { byDepartment, departments, stockState } from "@/lib/catalog";
+import { byDepartment, stockState } from "@/lib/catalog";
 import { getCatalogProducts } from "@/lib/catalog-source";
 import { getHeroSlides, getShowcaseCards } from "@/lib/home-content";
+import { getDepartments } from "@/lib/departments-source";
+import ProductImage from "@/components/ProductImage";
 import { dealProducts } from "@/lib/deals";
 
 const tickerItems = [
@@ -21,10 +23,11 @@ const tickerItems = [
 ];
 
 export default async function HomePage() {
-  const [products, heroSlides, showcaseCards] = await Promise.all([
+  const [products, heroSlides, showcaseCards, departments] = await Promise.all([
     getCatalogProducts(),
     getHeroSlides(),
     getShowcaseCards(),
+    getDepartments(),
   ]);
 
   /* The first three cards sit beside the fuel panel; anything the admin adds
@@ -79,9 +82,11 @@ export default async function HomePage() {
                 <Reveal key={d.slug} delay={i * 45}>
                   <Link href={`/department/${d.slug}`} className="group block text-center">
                     <div className="overflow-hidden rounded-full border border-line bg-surface transition-colors duration-300 group-hover:border-brand-green">
-                      <ProductArt
+                      <ProductImage
+                        imageUrl={d.imageUrl}
                         art={d.art}
                         hue={d.hue}
+                        alt={d.name}
                         className="aspect-square w-full transition-transform duration-500 group-hover:scale-110"
                       />
                     </div>

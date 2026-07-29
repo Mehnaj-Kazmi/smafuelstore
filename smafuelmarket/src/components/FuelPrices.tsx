@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { primaryStore } from "@/lib/store-location";
+import { getPrimaryStore } from "@/lib/store-source";
 
 /** Today's pump prices — the one card that is about fuel rather than the shop. */
-export default function FuelPrices() {
+export default async function FuelPrices() {
+  const primaryStore = await getPrimaryStore();
+
   return (
     <section className="card lift relative flex flex-col overflow-hidden p-5">
       {/* Fuel is the odd one out on this row, so it gets a warm wash. */}

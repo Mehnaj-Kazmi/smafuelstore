@@ -1,7 +1,8 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { nearestStore, primaryStore, type StoreLocation } from "./store-location";
+import { nearestStore, type StoreLocation } from "./store-location";
+import { usePrimaryStore, useStores } from "./store-context";
 
 /**
  * Delivery eligibility.
@@ -50,6 +51,8 @@ const DeliveryContext = createContext<DeliveryValue | null>(null);
 export function DeliveryProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<DeliveryStatus>("unknown");
   const [distance, setDistance] = useState<number | null>(null);
+  const stores = useStores();
+  const primaryStore = usePrimaryStore();
   const [store, setStore] = useState<StoreLocation>(primaryStore);
   const [simulated, setSimulated] = useState(false);
   const [ready, setReady] = useState(false);
@@ -71,7 +74,7 @@ export function DeliveryProvider({ children }: { children: React.ReactNode }) {
     setStatus("checking");
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const result = nearestStore({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        const result = nearestStore({ lat: pos.coords.latitude, lng: pos.coords.longitude }, stores);
         const next: DeliveryStatus = result.inRange ? "in-range" : "out-of-range";
         setStore(result.store);
         setDistance(result.distance);
@@ -87,7 +90,7 @@ export function DeliveryProvider({ children }: { children: React.ReactNode }) {
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 5 * 60 * 1000 },
     );
-  }, [persist]);
+  }, [persist, stores]);
 
   const simulateInRange = useCallback(() => {
     setStore(primaryStore);
@@ -95,7 +98,7 @@ export function DeliveryProvider({ children }: { children: React.ReactNode }) {
     setSimulated(true);
     setStatus("in-range");
     persist({ status: "in-range", distance: 0.4, storeId: primaryStore.id, simulated: true });
-  }, [persist]);
+  }, [persist, primaryStore]);
 
   const reset = useCallback(() => {
     setStatus("unknown");
@@ -138,7 +141,9 @@ export function DeliveryProvider({ children }: { children: React.ReactNode }) {
     () => ({
       status,
       distance,
-      store,
+      /* Falls back to the primary store until a position is verified, so the
+         name shown is always a real configured store. */
+      store: store ?? primaryStore,
       canOrder: status !== "out-of-range",
       ready,
       simulated,
@@ -146,7 +151,7 @@ export function DeliveryProvider({ children }: { children: React.ReactNode }) {
       simulateInRange,
       reset,
     }),
-    [status, distance, store, ready, simulated, check, simulateInRange, reset],
+    [status, distance, store, primaryStore, ready, simulated, check, simulateInRange, reset],
   );
 
   return <DeliveryContext.Provider value={value}>{children}</DeliveryContext.Provider>;

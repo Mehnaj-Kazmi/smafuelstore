@@ -52,7 +52,7 @@ export default function SettingsPage() {
         <div className="mt-3 space-y-2">
           {["Order status updates", "Daily deals and flash sales", "Back-in-stock alerts for saved items", "Receipts by email"].map((label, i) => (
             <label key={label} className="flex cursor-pointer items-center gap-3 text-[13px]">
-              <input type="checkbox" defaultChecked={i < 2} className="h-4 w-4 accent-sma-navy-light" />
+              <input type="checkbox" defaultChecked={i < 2} className="h-4 w-4 accent-brand-green" />
               {label}
             </label>
           ))}

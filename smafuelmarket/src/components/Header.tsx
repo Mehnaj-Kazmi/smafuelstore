@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { departments } from "@/lib/catalog";
-import { primaryStore } from "@/lib/store-location";
+import { usePrimaryStore } from "@/lib/store-context";
 import SmaLogo from "./SmaLogo";
 import CartCount from "./CartCount";
 import WishCount from "./WishCount";
@@ -21,6 +21,7 @@ const navLinks = [
 export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
+  const primaryStore = usePrimaryStore();
 
   const [query, setQuery] = useState("");
   const [scope, setScope] = useState("all");
@@ -271,7 +272,8 @@ export default function Header() {
                 { label: "Addresses", href: "/addresses" },
                 { label: "Notifications", href: "/notifications" },
                 { label: "Settings", href: "/settings" },
-                { label: "Admin dashboard", href: "/admin" },
+                /* No admin link here either — this menu is the customer's
+                   account area, and staff reach /admin by signing in. */
               ].map((l) => (
                 <Link
                   key={l.href}

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import SmaLogo from "./SmaLogo";
-import { primaryStore } from "@/lib/store-location";
+import { getPrimaryStore } from "@/lib/store-source";
 
 const columns = [
   {
@@ -30,18 +30,23 @@ const columns = [
       { label: "Store locations", href: "/contact" },
     ],
   },
-  {
-    heading: "Store team",
-    links: [
-      { label: "Admin dashboard", href: "/admin" },
-      { label: "Inventory", href: "/admin/inventory" },
-      { label: "Orders", href: "/admin/orders" },
-      { label: "Reports", href: "/admin/reports" },
-    ],
-  },
 ];
 
-export default function Footer() {
+/*
+ * There is deliberately no "Store team" column here.
+ *
+ * The footer linked straight to the admin dashboard, inventory, orders and
+ * reports, which advertised the back office to every customer. The routes are
+ * guarded, so nothing was exposed — but telling shoppers where the admin lives
+ * invites them to go poking at it, and it makes the shop look unfinished.
+ *
+ * Staff are not locked out: signing in with an ADMIN account lands on /admin
+ * automatically (see the sign-in page), and the address can be bookmarked.
+ */
+
+export default async function Footer() {
+  const primaryStore = await getPrimaryStore();
+
   return (
     <footer className="mt-14 border-t border-line bg-black">
       <a
@@ -63,7 +68,7 @@ export default function Footer() {
         </span>
       </a>
 
-      <div className="mx-auto grid max-w-[1100px] grid-cols-2 gap-8 px-6 py-14 sm:grid-cols-4">
+      <div className="mx-auto grid max-w-[820px] grid-cols-2 justify-items-center gap-8 px-6 py-14 text-center sm:grid-cols-3">
         {columns.map((col) => (
           <div key={col.heading}>
             <h3 className="eyebrow mb-3">{col.heading}</h3>

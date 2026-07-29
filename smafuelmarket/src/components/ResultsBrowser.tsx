@@ -95,7 +95,7 @@ export default function ResultsBrowser({
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as SortKey)}
-              className="cursor-pointer rounded-md border border-sma-border bg-[#f0f2f2] px-2 py-1.5 text-[13px] outline-none"
+              className="cursor-pointer rounded-lg border border-line bg-surface-2 px-3 py-1.5 text-[13px] text-white outline-none transition-colors focus:border-brand-green"
             >
               {sortOptions.map((s) => (
                 <option key={s.value} value={s.value}>{s.label}</option>
@@ -184,7 +184,7 @@ export default function ResultsBrowser({
                       type="checkbox"
                       checked={brands.includes(b)}
                       onChange={() => setBrands((cur) => cur.includes(b) ? cur.filter((x) => x !== b) : [...cur, b])}
-                      className="h-3.5 w-3.5 accent-sma-navy-light"
+                      className="h-3.5 w-3.5 accent-brand-green"
                     />
                     {b}
                   </label>
@@ -195,13 +195,13 @@ export default function ResultsBrowser({
             <Group title="Availability">
               <li>
                 <label className="flex cursor-pointer items-center gap-2 py-[3px] text-[13px]">
-                  <input type="checkbox" checked={inStockOnly} onChange={(e) => setInStockOnly(e.target.checked)} className="h-3.5 w-3.5 accent-sma-navy-light" />
+                  <input type="checkbox" checked={inStockOnly} onChange={(e) => setInStockOnly(e.target.checked)} className="h-3.5 w-3.5 accent-brand-green" />
                   In stock only
                 </label>
               </li>
               <li>
                 <label className="flex cursor-pointer items-center gap-2 py-[3px] text-[13px]">
-                  <input type="checkbox" checked={hideRestricted} onChange={(e) => setHideRestricted(e.target.checked)} className="h-3.5 w-3.5 accent-sma-navy-light" />
+                  <input type="checkbox" checked={hideRestricted} onChange={(e) => setHideRestricted(e.target.checked)} className="h-3.5 w-3.5 accent-brand-green" />
                   Hide age-restricted
                 </label>
               </li>

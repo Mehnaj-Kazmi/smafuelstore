@@ -10,6 +10,12 @@ import { DeliveryProvider } from "@/lib/delivery";
 import { AuthProvider } from "@/lib/auth";
 import { CatalogProvider } from "@/lib/catalog-context";
 import { getCatalogProducts } from "@/lib/catalog-source";
+import { DealsProvider } from "@/lib/deals-context";
+import { getDeals } from "@/lib/deals-source";
+import { StoreProvider } from "@/lib/store-context";
+import { getStores } from "@/lib/store-source";
+import { ToastProvider } from "@/lib/toast";
+import Toaster from "@/components/Toaster";
 
 export const metadata: Metadata = {
   title: {
@@ -29,14 +35,17 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   /* Fetched once here and shared with every client component below, so the
      cart and the server-rendered pages agree on the same catalogue. */
-  const catalog = await getCatalogProducts();
+  const [catalog, deals, stores] = await Promise.all([getCatalogProducts(), getDeals(), getStores()]);
 
   return (
     <html lang="en">
       <body id="top">
+        <StoreProvider stores={stores}>
         <CatalogProvider products={catalog}>
+        <DealsProvider deals={deals}>
         <AuthProvider>
           <DeliveryProvider>
+            <ToastProvider>
             <CartProvider>
               {/* No Suspense boundary here on purpose: the header must hydrate
                   in the main pass so its cart and wishlist badges are live on
@@ -47,10 +56,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Footer />
               <IntroSplash />
               <LocationPrompt />
+              <Toaster />
             </CartProvider>
+            </ToastProvider>
           </DeliveryProvider>
         </AuthProvider>
+        </DealsProvider>
         </CatalogProvider>
+        </StoreProvider>
       </body>
     </html>
   );

@@ -17,6 +17,8 @@ export type Department = {
   slug: DepartmentSlug;
   name: string;
   blurb: string;
+  /** Uploaded artwork for the department circle; falls back to `art` + `hue`. */
+  imageUrl?: string | null;
   art: ArtKey;
   hue: number;
   /** Blocks purchase without age confirmation at checkout. */

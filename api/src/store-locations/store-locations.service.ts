@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { UpdateStoreDto } from './dto/update-store.dto';
 
 const EARTH_RADIUS_MILES = 3958.8;
 
@@ -28,6 +29,34 @@ export class StoreLocationsService {
 
   findAll() {
     return this.prisma.storeLocation.findMany({ include: { fuelPrices: true } });
+  }
+
+  /**
+   * Updates a store, replacing its fuel prices wholesale when supplied.
+   *
+   * Prices are deleted and recreated rather than diffed: the grid is edited as
+   * one block in the admin, so a grade removed there must disappear here, and
+   * an upsert-only pass would leave it behind for ever.
+   */
+  async update(id: string, dto: UpdateStoreDto) {
+    const store = await this.prisma.storeLocation.findUnique({ where: { id } });
+    if (!store) throw new NotFoundException(`Store ${id} not found`);
+
+    const { fuelPrices, ...rest } = dto;
+
+    return this.prisma.$transaction(async (tx) => {
+      if (fuelPrices) {
+        await tx.fuelPrice.deleteMany({ where: { storeId: id } });
+        await tx.fuelPrice.createMany({
+          data: fuelPrices.map((f) => ({ storeId: id, grade: f.grade, price: f.price })),
+        });
+      }
+      return tx.storeLocation.update({
+        where: { id },
+        data: rest,
+        include: { fuelPrices: true },
+      });
+    });
   }
 
   async nearest(lat: number, lng: number) {

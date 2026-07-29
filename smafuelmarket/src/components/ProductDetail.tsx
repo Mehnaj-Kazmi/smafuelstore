@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { categoryMap, departmentMap, discountPercent, stockState, type Product } from "@/lib/catalog";
 import { dealsForProduct, dealKindClass, dealKindLabel } from "@/lib/deals";
+import { useDeals } from "@/lib/deals-context";
 import { money, priceParts } from "@/lib/format";
 import { useCart } from "@/lib/cart";
 import { useDelivery } from "@/lib/delivery";
 import { useAuthGate } from "@/lib/auth-gate";
+import { useToast } from "@/lib/toast";
 import ProductArt from "./ProductArt";
 import ProductImage from "./ProductImage";
 import StarRating from "./StarRating";
@@ -22,9 +24,10 @@ function ratingBreakdown(rating: number): number[] {
 
 export default function ProductDetail({ product, related }: { product: Product; related: Product[] }) {
   const router = useRouter();
-  const { add } = useCart();
+  const { add, items, remove, setQuantity: setCartQuantity } = useCart();
   const { canOrder, store } = useDelivery();
   const { requireAuth } = useAuthGate();
+  const { notify } = useToast();
   const [quantity, setQuantity] = useState(1);
 
   const { whole, cents } = priceParts(product.price);
@@ -32,7 +35,7 @@ export default function ProductDetail({ product, related }: { product: Product; 
   const department = departmentMap[product.department];
   const category = categoryMap[product.category];
   const stock = stockState(product);
-  const productDeals = dealsForProduct(product.id);
+  const productDeals = dealsForProduct(product.id, useDeals());
   const breakdown = ratingBreakdown(product.rating);
   const soldOut = stock === "out";
   const blocked = soldOut || !canOrder;
@@ -40,7 +43,21 @@ export default function ProductDetail({ product, related }: { product: Product; 
   function addToCart() {
     if (blocked) return;
     if (!requireAuth("cart")) return;
+
+    /* Captured first so Undo restores the previous quantity rather than
+       assuming the product was not already in the basket. */
+    const before = items.find((i) => i.productId === product.id)?.quantity ?? 0;
     add(product.id, quantity);
+
+    notify({
+      message: "Added to basket",
+      detail: `${quantity} × ${product.title}`,
+      tone: "good",
+      action: {
+        label: "Undo",
+        run: () => (before === 0 ? remove(product.id) : setCartQuantity(product.id, before)),
+      },
+    });
   }
 
   function buyNow() {
@@ -276,9 +293,11 @@ export default function ProductDetail({ product, related }: { product: Product; 
             {related.map((p) => (
               <Link key={p.id} href={`/product/${p.id}`} className="group block">
                 <div className="overflow-hidden rounded-xl border border-line bg-surface-2">
-                  <ProductArt
+                  <ProductImage
+                    imageUrl={p.imageUrl}
                     art={p.art}
                     hue={p.hue}
+                    alt={p.title}
                     className="aspect-square w-full transition-transform duration-500 group-hover:scale-[1.07]"
                   />
                 </div>

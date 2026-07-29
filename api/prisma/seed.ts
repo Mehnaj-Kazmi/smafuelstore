@@ -6,15 +6,15 @@ import * as bcrypt from 'bcryptjs';
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
 
 const departments = [
-  { slug: 'grocery', name: 'Grocery', blurb: 'Pantry staples, dairy & frozen', art: 'cereal', hue: 30 },
-  { slug: 'drinks', name: 'Drinks', blurb: 'Soda, coffee, energy & water', art: 'soda', hue: 205 },
-  { slug: 'snacks', name: 'Snacks', blurb: 'Chips, candy, nuts & jerky', art: 'chips', hue: 45 },
-  { slug: 'bakery', name: 'Bakery', blurb: 'Fresh bread, donuts & hot food', art: 'donut', hue: 25 },
-  { slug: 'automotive', name: 'Automotive', blurb: 'Oil, wipers, chargers & fluids', art: 'oil', hue: 200 },
-  { slug: 'household', name: 'Household', blurb: 'Cleaning, paper goods & batteries', art: 'cleaner', hue: 165 },
-  { slug: 'medicine', name: 'Medicine', blurb: 'Pain relief, first aid & care', art: 'pills', hue: 190 },
-  { slug: 'tobacco', name: 'Tobacco', blurb: 'Age-restricted — ID required', art: 'cigarettes', hue: 15, ageRestricted: true },
-  { slug: 'pet-supplies', name: 'Pet Supplies', blurb: 'Food, treats & essentials', art: 'petFood', hue: 100 },
+  { sortOrder: 0, slug: 'grocery', name: 'Grocery', blurb: 'Pantry staples, dairy & frozen', art: 'cereal', hue: 30 },
+  { sortOrder: 1, slug: 'drinks', name: 'Drinks', blurb: 'Soda, coffee, energy & water', art: 'soda', hue: 205 },
+  { sortOrder: 2, slug: 'snacks', name: 'Snacks', blurb: 'Chips, candy, nuts & jerky', art: 'chips', hue: 45 },
+  { sortOrder: 3, slug: 'bakery', name: 'Bakery', blurb: 'Fresh bread, donuts & hot food', art: 'donut', hue: 25 },
+  { sortOrder: 4, slug: 'automotive', name: 'Automotive', blurb: 'Oil, wipers, chargers & fluids', art: 'oil', hue: 200 },
+  { sortOrder: 5, slug: 'household', name: 'Household', blurb: 'Cleaning, paper goods & batteries', art: 'cleaner', hue: 165 },
+  { sortOrder: 6, slug: 'medicine', name: 'Medicine', blurb: 'Pain relief, first aid & care', art: 'pills', hue: 190 },
+  { sortOrder: 7, slug: 'tobacco', name: 'Tobacco', blurb: 'Age-restricted — ID required', art: 'cigarettes', hue: 15, ageRestricted: true },
+  { sortOrder: 8, slug: 'pet-supplies', name: 'Pet Supplies', blurb: 'Food, treats & essentials', art: 'petFood', hue: 100 },
 ];
 
 const categories = [
@@ -85,9 +85,23 @@ const products = [
   { id: 'gs-1036', sku: 'PET-TRT-036', barcode: '0490112340369', title: 'PawPantry Dental Chew Treats', brand: 'PawPantry', departmentSlug: 'pet-supplies', categorySlug: 'pet-treats', unit: '12 chews', price: 8.49, stock: 48, lowStockAt: 12, rating: 4.6, reviews: 1090, art: 'petTreat', hue: 85, tags: [], bullets: ['Ridged texture helps reduce plaque', '12 chews per pack', 'For dogs over 20 lb', 'No artificial colours'], description: 'Ridged chews that scrape plaque while the dog works on them. Twelve to a pack, sized for dogs over twenty pounds.' },
 ];
 
+/*
+ * Seeding rule: create what is missing, never overwrite what exists.
+ *
+ * Every table below is editable from the admin panel, so re-running the seed
+ * with the full object as the update payload silently discards real work —
+ * that is how a re-seed erased the uploaded hero artwork, leaving the files on
+ * disk with nothing pointing at them. An empty update makes the seed
+ * idempotent and safe to run at any time: it fills in what a fresh database
+ * lacks and leaves an established one alone.
+ *
+ * To genuinely reset a row to its seeded values, delete it and re-run.
+ */
+const KEEP_EXISTING = {};
+
 async function main() {
   for (const d of departments) {
-    await prisma.department.upsert({ where: { slug: d.slug }, update: d, create: d });
+    await prisma.department.upsert({ where: { slug: d.slug }, update: KEEP_EXISTING, create: d });
   }
 
   for (const c of categories) {
@@ -95,7 +109,7 @@ async function main() {
   }
 
   for (const p of products) {
-    await prisma.product.upsert({ where: { id: p.id }, update: p, create: p });
+    await prisma.product.upsert({ where: { id: p.id }, update: KEEP_EXISTING, create: p });
   }
 
   const store = await prisma.storeLocation.upsert({
@@ -187,7 +201,7 @@ async function main() {
 
     await prisma.deal.upsert({
       where: { id: deal.id },
-      update: { ...deal, products: { set: connect } },
+      update: KEEP_EXISTING,
       create: { ...deal, products: { connect } },
     });
   }
@@ -261,9 +275,17 @@ async function main() {
   ];
 
   for (const slide of heroSlides) {
+    /*
+     * Re-seeding must never clear artwork an admin has uploaded.
+     *
+     * The seed defines these slides with empty `tileImages`, so passing the
+     * whole object as `update` wiped every uploaded hero photo each time the
+     * seed ran — the images stayed on disk but the rows forgot them. Media
+     * fields belong to whoever edited them, so they are set on create only.
+     */
     await prisma.heroSlide.upsert({
       where: { id: slide.id },
-      update: slide,
+      update: KEEP_EXISTING,
       create: slide,
     });
   }
@@ -367,9 +389,14 @@ async function main() {
   );
 
   for (const card of showcaseCards) {
+    /*
+     * Same rule as the hero slides: the tiles carry `imageUrl`, so updating
+     * them from the seed would discard uploaded artwork. Existing cards keep
+     * their tiles; only a brand new card gets the seeded ones.
+     */
     await prisma.showcaseCard.upsert({
       where: { id: card.id },
-      update: card,
+      update: KEEP_EXISTING,
       create: card,
     });
   }

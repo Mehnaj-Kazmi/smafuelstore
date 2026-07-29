@@ -23,17 +23,29 @@ export default function ImageUploadField({
   value,
   onChange,
   className = "",
+  mode = "white",
+  label = "Product photo",
 }: {
   value: string;
   onChange: (url: string) => void;
   className?: string;
+  /**
+   * `white` puts the photo on a white background, for catalogue products.
+   * `cutout` removes the background entirely, for artwork placed on a
+   * coloured panel such as a hero tile, where a white rectangle would read as
+   * a sticker rather than as the product.
+   */
+  mode?: "white" | "cutout";
+  label?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [note, setNote] = useState("");
 
   async function upload(file: File) {
     setError("");
+    setNote("");
 
     if (!file.type.startsWith("image/")) {
       setError("That file isn't an image");
@@ -50,7 +62,7 @@ export default function ImageUploadField({
       body.append("file", file);
 
       const token = getToken();
-      const res = await fetch(`${API_BASE}/uploads/product-image`, {
+      const res = await fetch(`${API_BASE}/uploads/product-image?mode=${mode}`, {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         body,
@@ -61,8 +73,11 @@ export default function ImageUploadField({
         throw new Error(detail?.message ?? `Upload failed (${res.status})`);
       }
 
-      const { url } = (await res.json()) as { url: string };
+      const { url, normalised } = (await res.json()) as { url: string; normalised?: string };
       onChange(url);
+      /* Surfaced because background removal can decline an image, and silently
+         leaving the old look in place is what makes it look broken. */
+      if (normalised) setNote(normalised);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -73,13 +88,13 @@ export default function ImageUploadField({
 
   return (
     <div className={className}>
-      <label className="mb-1.5 block text-[13px] font-bold text-ink-soft">Product photo</label>
+      <label className="mb-1.5 block text-[13px] font-bold text-ink-soft">{label}</label>
 
       <div className="flex items-center gap-4">
         <div className="grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-xl border border-line bg-surface-2">
           {value ? (
             /* eslint-disable-next-line @next/next/no-img-element -- local upload preview */
-            <img src={imageSrc(value)} alt="Product photo preview" className="h-full w-full object-cover" />
+            <img src={imageSrc(value)} alt="Product photo preview" className="h-full w-full object-contain" />
           ) : (
             <span className="px-2 text-center text-[10px] leading-tight text-ink-faint">
               No photo — drawn artwork used
@@ -105,6 +120,7 @@ export default function ImageUploadField({
           </p>
 
           {busy && <p className="mt-1 text-[12px] font-semibold text-brand-green">Uploading…</p>}
+          {note && !busy && <p className="mt-1 text-[11px] leading-4 text-ink-faint">{note}</p>}
           {error && <p className="mt-1 text-[12px] font-semibold text-sma-deal">{error}</p>}
 
           {value && !busy && (

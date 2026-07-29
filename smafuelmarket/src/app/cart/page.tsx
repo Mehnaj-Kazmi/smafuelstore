@@ -9,6 +9,7 @@ import { money } from "@/lib/format";
 import { stockState } from "@/lib/catalog";
 import { useCatalog } from "@/lib/catalog-context";
 import ProductArt from "@/components/ProductArt";
+import ProductImage from "@/components/ProductImage";
 import ProductCard from "@/components/ProductCard";
 
 const FREE_DELIVERY_OVER = 20;
@@ -21,7 +22,7 @@ export default function CartPage() {
   const { products } = useCatalog();
 
   if (!hydrated) {
-    return <div className="mx-auto max-w-[1500px] px-3 py-10 text-sm text-sma-muted">Loading your cart…</div>;
+    return <div className="mx-auto max-w-[1500px] px-3 py-10 text-sm text-ink-faint">Loading your cart…</div>;
   }
 
   if (items.length === 0) {
@@ -32,12 +33,12 @@ export default function CartPage() {
           <ProductArt art="chips" hue={45} className="h-40 w-40 shrink-0" />
           <div>
             <h1 className="text-2xl font-bold">Your basket is empty</h1>
-            <p className="mt-1 text-sm text-sma-muted">
+            <p className="mt-1 text-sm text-ink-faint">
               Everything in the store is available for delivery in about 30 minutes.
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
               <Link href="/deals" className="btn-pill btn-cart inline-block font-medium">Shop today&apos;s deals</Link>
-              <Link href="/shop" className="btn-pill inline-block bg-surface font-medium hover:bg-gray-50">Browse the store</Link>
+              <Link href="/shop" className="btn-pill inline-block bg-surface font-medium hover:bg-surface-2">Browse the store</Link>
             </div>
           </div>
         </div>
@@ -60,47 +61,53 @@ export default function CartPage() {
         <div className="bg-surface p-5">
           <div className="flex items-baseline justify-between">
             <h1 className="text-2xl font-medium sm:text-[28px]">Your basket</h1>
-            <button type="button" onClick={clear} className="text-[13px] text-sma-link hover:text-sma-link-hover hover:underline">
+            <button type="button" onClick={clear} className="text-[13px] text-brand-green hover:text-brand-green hover:underline">
               Empty basket
             </button>
           </div>
-          <p className="mb-2 border-b border-sma-border pb-2 text-right text-[13px] text-sma-muted">Price</p>
+          <p className="mb-2 border-b border-line pb-2 text-right text-[13px] text-ink-faint">Price</p>
 
           <ul>
             {items.map((item) => {
               const stock = stockState(item.product);
               return (
-                <li key={item.productId} className="flex gap-4 border-b border-sma-border py-4 last:border-0">
+                <li key={item.productId} className="flex gap-4 border-b border-line py-4 last:border-0">
                   <Link href={`/product/${item.productId}`} className="shrink-0">
-                    <ProductArt art={item.product.art} hue={item.product.hue} className="h-24 w-24 rounded-md sm:h-32 sm:w-32" />
+                    <ProductImage
+                      imageUrl={item.product.imageUrl}
+                      art={item.product.art}
+                      hue={item.product.hue}
+                      alt={item.product.title}
+                      className="h-24 w-24 rounded-md sm:h-32 sm:w-32"
+                    />
                   </Link>
 
                   <div className="flex min-w-0 flex-1 flex-col">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <Link href={`/product/${item.productId}`} className="line-clamp-2 text-base font-medium hover:text-sma-link-hover">
+                        <Link href={`/product/${item.productId}`} className="line-clamp-2 text-base font-medium hover:text-brand-green">
                           {item.product.title}
                         </Link>
-                        <p className="text-xs text-sma-muted">{item.product.unit}</p>
-                        <p className={`mt-0.5 text-xs ${stock === "low" ? "text-[#c45500]" : "text-[#007600]"}`}>
+                        <p className="text-xs text-ink-faint">{item.product.unit}</p>
+                        <p className={`mt-0.5 text-xs ${stock === "low" ? "text-brand-orange" : "text-brand-green"}`}>
                           {stock === "low" ? `Only ${item.product.stock} left` : "In stock"}
                         </p>
                         {item.product.ageRestricted && (
-                          <p className="mt-0.5 text-xs font-medium text-[#7a4a05]">Photo ID required at handover</p>
+                          <p className="mt-0.5 text-xs font-medium text-brand-orange">Photo ID required at handover</p>
                         )}
                       </div>
                       <p className="shrink-0 text-base font-bold">{money(item.lineTotal)}</p>
                     </div>
 
                     <div className="mt-3 flex flex-wrap items-center gap-3">
-                      <div className="flex items-center rounded-full border border-sma-border shadow-sm">
+                      <div className="flex items-center rounded-full border border-line shadow-sm">
                         <button
                           type="button"
                           onClick={() => setQuantity(item.productId, item.quantity - 1)}
                           aria-label={`Decrease quantity of ${item.product.title}`}
-                          className="px-3 py-1 text-lg leading-5 text-sma-link hover:bg-gray-100"
+                          className="px-3 py-1 text-lg leading-5 text-brand-green hover:bg-surface-3"
                         >
-                          {item.quantity === 1 ? "🗑" : "−"}
+                          −
                         </button>
                         <span className="min-w-8 px-2 text-center text-sm font-medium tabular-nums">{item.quantity}</span>
                         <button
@@ -108,20 +115,20 @@ export default function CartPage() {
                           onClick={() => setQuantity(item.productId, item.quantity + 1)}
                           disabled={item.quantity >= item.product.stock}
                           aria-label={`Increase quantity of ${item.product.title}`}
-                          className="px-3 py-1 text-lg leading-5 text-sma-link hover:bg-gray-100 disabled:opacity-40"
+                          className="px-3 py-1 text-lg leading-5 text-brand-green hover:bg-surface-3 disabled:opacity-40"
                         >
                           +
                         </button>
                       </div>
                       <span className="text-sma-border">|</span>
-                      <button type="button" onClick={() => remove(item.productId)} className="text-[13px] text-sma-link hover:text-sma-link-hover hover:underline">
+                      <button type="button" onClick={() => remove(item.productId)} className="text-[13px] text-brand-green hover:text-brand-green hover:underline">
                         Remove
                       </button>
                       <span className="text-sma-border">|</span>
                       <button
                         type="button"
                         onClick={() => { toggleWish(item.productId); remove(item.productId); }}
-                        className="text-[13px] text-sma-link hover:text-sma-link-hover hover:underline"
+                        className="text-[13px] text-brand-green hover:text-brand-green hover:underline"
                       >
                         Save for later
                       </button>
@@ -140,7 +147,7 @@ export default function CartPage() {
         <aside className="lg:sticky lg:top-[110px] lg:self-start">
           <div className="bg-surface p-5">
             {!canOrder ? (
-              <p className="mb-3 rounded-md border border-[#f0d4a3] bg-[#fdf3e3] p-3 text-[13px] leading-5 text-[#7a4a05]">
+              <p className="mb-3 rounded-md border border-brand-orange/35 bg-brand-orange/10 p-3 text-[13px] leading-5 text-brand-orange">
                 <strong>Checkout is unavailable.</strong> We only deliver within {store.radiusMiles} miles of{" "}
                 {store.name}. Your basket is saved if you come back inside the area.
               </p>
@@ -149,7 +156,7 @@ export default function CartPage() {
                 Add <span className="font-bold">{money(remaining)}</span> for free delivery.
               </p>
             ) : (
-              <p className="mb-3 text-[13px] leading-5 text-[#007600]">Your order qualifies for free delivery.</p>
+              <p className="mb-3 text-[13px] leading-5 text-brand-green">Your order qualifies for free delivery.</p>
             )}
 
             <p className="text-lg">
@@ -158,7 +165,7 @@ export default function CartPage() {
             {savings > 0 && <p className="mt-1 text-[13px] text-sma-deal">You save {money(savings)}</p>}
 
             {hasAgeRestricted && (
-              <p className="mt-3 text-xs leading-4 text-sma-muted">
+              <p className="mt-3 text-xs leading-4 text-ink-faint">
                 Your basket contains age-restricted items. You&apos;ll confirm your age at checkout and show ID on
                 delivery.
               </p>

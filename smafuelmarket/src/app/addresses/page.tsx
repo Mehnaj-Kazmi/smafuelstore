@@ -1,16 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { primaryStore } from "@/lib/store-location";
+import { getPrimaryStore } from "@/lib/store-source";
 
 export const metadata: Metadata = { title: "Your addresses" };
 
-const saved = [
-  { label: "Home", line1: "88 Maple Court", city: primaryStore.city, postcode: "92501", isDefault: true, inRange: true },
-  { label: "Work", line1: "12 Industrial Way, Unit 4", city: primaryStore.city, postcode: "92507", isDefault: false, inRange: true },
-  { label: "Mum's house", line1: "301 Hillcrest Road", city: "Moreno Valley", postcode: "92553", isDefault: false, inRange: false },
-];
+export default async function AddressesPage() {
+  const primaryStore = await getPrimaryStore();
 
-export default function AddressesPage() {
+  /* Built inside the component because the sample addresses are described
+     relative to whichever store is configured. */
+  const saved = [
+    { label: "Home", line1: "88 Maple Court", city: primaryStore.city, postcode: "92501", isDefault: true, inRange: true },
+    { label: "Work", line1: "12 Industrial Way, Unit 4", city: primaryStore.city, postcode: "92507", isDefault: false, inRange: true },
+    { label: "Mum's house", line1: "301 Hillcrest Road", city: "Moreno Valley", postcode: "92553", isDefault: false, inRange: false },
+  ];
+
   return (
     <div className="mx-auto max-w-[1000px] px-4 py-6">
       <div className="bg-surface p-5">

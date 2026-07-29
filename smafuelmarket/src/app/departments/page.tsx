@@ -1,31 +1,41 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import ProductArt from "@/components/ProductArt";
-import { byDepartment, categoriesIn, departments } from "@/lib/catalog";
+import ProductImage from "@/components/ProductImage";
+import { byDepartment, categoriesIn } from "@/lib/catalog";
+import { getCatalogProducts } from "@/lib/catalog-source";
+import { getDepartments } from "@/lib/departments-source";
 
 export const metadata: Metadata = {
   title: "Departments",
   description: "Browse every department at SMA Fuel & Market.",
 };
 
-export default function DepartmentsPage() {
+export default async function DepartmentsPage() {
+  const [departments, products] = await Promise.all([getDepartments(), getCatalogProducts()]);
+
   return (
     <div className="mx-auto max-w-[1500px] px-3 py-4">
       <div className="bg-surface p-5">
         <h1 className="text-2xl font-bold">Departments</h1>
         <p className="mt-1 text-sm text-sma-muted">
-          Nine departments, {departments.reduce((n, d) => n + byDepartment(d.slug).length, 0)} products in stock.
+          Nine departments, {departments.reduce((n, d) => n + byDepartment(d.slug, products).length, 0)} products in stock.
         </p>
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {departments.map((d) => {
-          const count = byDepartment(d.slug).length;
+          const count = byDepartment(d.slug, products).length;
           const cats = categoriesIn(d.slug);
           return (
             <section key={d.slug} className="flex gap-4 bg-surface p-5">
               <Link href={`/department/${d.slug}`} className="shrink-0">
-                <ProductArt art={d.art} hue={d.hue} className="h-24 w-24 rounded-md" />
+                <ProductImage
+                  imageUrl={d.imageUrl}
+                  art={d.art}
+                  hue={d.hue}
+                  alt={d.name}
+                  className="h-24 w-24 rounded-md"
+                />
               </Link>
               <div className="min-w-0">
                 <h2 className="text-lg font-bold">
