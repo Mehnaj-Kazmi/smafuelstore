@@ -1,9 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useDelivery } from "@/lib/delivery";
-
-const DISMISS_KEY = "sma-store:location-prompt-dismissed";
 
 /**
  * Shown on open when we have no verified delivery result yet.
@@ -17,30 +14,13 @@ const DISMISS_KEY = "sma-store:location-prompt-dismissed";
  * Declining is remembered for the session only, so the next visit asks again.
  */
 export default function LocationPrompt() {
-  const { status, ready, check, simulateInRange } = useDelivery();
-  const [dismissed, setDismissed] = useState(true);
-  const [mounted, setMounted] = useState(false);
+  const { status, store, check, simulateInRange, promptOpen, dismissLocationPrompt } = useDelivery();
 
-  useEffect(() => {
-    setMounted(true);
-    try {
-      setDismissed(window.sessionStorage.getItem(DISMISS_KEY) === "1");
-    } catch {
-      setDismissed(false);
-    }
-  }, []);
+  /* Whether to show, and who is exempt, is decided in the delivery context so a
+     blocked add-to-cart can reopen this from anywhere. */
+  if (!promptOpen) return null;
 
-  function dismiss() {
-    setDismissed(true);
-    try {
-      window.sessionStorage.setItem(DISMISS_KEY, "1");
-    } catch {
-      /* session-only anyway */
-    }
-  }
-
-  const open = mounted && ready && !dismissed && (status === "unknown" || status === "denied");
-  if (!open) return null;
+  const dismiss = dismissLocationPrompt;
 
   const blocked = status === "denied";
 
@@ -71,13 +51,13 @@ export default function LocationPrompt() {
         <p className="relative mt-3 text-sm leading-6 text-ink-soft">
           {blocked ? (
             <>
-              Your browser is blocking location for this site. Allow it in the address-bar icon to see live
-              delivery times — or carry on shopping and enter an address at checkout.
+              Your browser is blocking location for this site. Allow it from the address-bar icon, or use the
+              demo address below, to start adding items.
             </>
           ) : (
             <>
-              Share your location and we&apos;ll show your nearest store, live delivery times and the right fuel
-              prices. You can shop without it — we&apos;ll just confirm delivery at checkout.
+              We deliver within {store.radiusMiles} miles of {store.city}, so we need to know where you are
+              before you add anything. Browsing is open to everyone.
             </>
           )}
         </p>

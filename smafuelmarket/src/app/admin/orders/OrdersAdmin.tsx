@@ -26,8 +26,9 @@ const statusLabel: Record<string, string> = {
 export default function OrdersAdmin() {
   const [orders, setOrders] = useState<ApiOrder[] | null>(null);
   const [error, setError] = useState("");
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<number | null>(null);
   const [filter, setFilter] = useState<string>("ALL");
+  const [query, setQuery] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -42,7 +43,7 @@ export default function OrdersAdmin() {
     void load();
   }, [load]);
 
-  async function changeStatus(id: string, status: string) {
+  async function changeStatus(id: number, status: string) {
     setBusyId(id);
     setError("");
     try {
@@ -71,10 +72,19 @@ export default function OrdersAdmin() {
     };
   }, [orders]);
 
-  const shown = useMemo(
-    () => (orders ?? []).filter((o) => filter === "ALL" || o.status === filter),
-    [orders, filter],
-  );
+  /* Order id, customer, and the items on it — an operator chasing a delivery
+     call is as likely to have a customer's name as the order number. */
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return (orders ?? []).filter((o) => {
+      if (filter !== "ALL" && o.status !== filter) return false;
+      if (!q) return true;
+      const hay = `${o.id} ${o.user?.name ?? ""} ${o.user?.email ?? ""} ${o.items
+        .map((i) => i.product.title)
+        .join(" ")}`.toLowerCase();
+      return q.split(/\s+/).every((t) => hay.includes(t));
+    });
+  }, [orders, filter, query]);
 
   if (error && !orders) {
     return (
@@ -98,16 +108,37 @@ export default function OrdersAdmin() {
       <Panel
         title="Orders"
         action={
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="rounded-lg border border-line bg-surface-2 px-3 py-1.5 text-[13px] text-white outline-none focus:border-brand-green"
-          >
-            <option value="ALL">All statuses</option>
-            {ORDER_STATUSES.map((s) => (
-              <option key={s} value={s}>{statusLabel[s]}</option>
-            ))}
-          </select>
+          <span className="flex flex-wrap items-center gap-2">
+            <label className="sr-only" htmlFor="order-search">Search orders</label>
+            <input
+              id="order-search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search order #, customer, item…"
+              className="w-[min(60vw,260px)] rounded-lg border border-line bg-surface-2 px-3 py-1.5 text-[13px] text-white outline-none transition-colors placeholder:text-ink-faint focus:border-brand-green"
+            />
+            <label className="sr-only" htmlFor="order-status">Filter by status</label>
+            <select
+              id="order-status"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="rounded-lg border border-line bg-surface-2 px-3 py-1.5 text-[13px] text-white outline-none focus:border-brand-green"
+            >
+              <option value="ALL">All statuses</option>
+              {ORDER_STATUSES.map((s) => (
+                <option key={s} value={s}>{statusLabel[s]}</option>
+              ))}
+            </select>
+            {(query || filter !== "ALL") && (
+              <button
+                type="button"
+                onClick={() => { setQuery(""); setFilter("ALL"); }}
+                className="text-[12px] font-bold text-ink-faint hover:text-white"
+              >
+                Clear
+              </button>
+            )}
+          </span>
         }
       >
         {!orders ? (
@@ -116,13 +147,15 @@ export default function OrdersAdmin() {
           <p className="text-[13px] text-ink-faint">
             {orders.length === 0
               ? "No orders have been placed yet. They appear here the moment a customer checks out."
-              : "No orders with that status."}
+              : "Nothing matches that search."}
           </p>
         ) : (
+          <>
+          <p className="mb-3 text-[12px] text-ink-faint">Showing {shown.length} of {orders.length} orders</p>
           <Table head={["Order", "Placed", "Customer", "Items", "Total", "Status", "Move to"]}>
             {shown.map((o) => (
               <tr key={o.id} className={o.status === "CANCELLED" ? "opacity-60" : ""}>
-                <td className="py-2.5 pr-4 font-mono text-xs text-white">{o.id.slice(-8).toUpperCase()}</td>
+                <td className="py-2.5 pr-4 font-mono text-xs text-white">#{String(o.id).padStart(6, "0")}</td>
                 <td className="py-2.5 pr-4 text-xs text-ink-faint">
                   {new Date(o.placedAt).toLocaleDateString()}{" "}
                   {new Date(o.placedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -160,6 +193,7 @@ export default function OrdersAdmin() {
               </tr>
             ))}
           </Table>
+          </>
         )}
       </Panel>
     </div>

@@ -9,7 +9,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 
 /** The catalogue as the API returns it, before mapping to the storefront shape. */
 type ApiProduct = {
-  id: string;
+  id: number;
   sku: string;
   barcode: string;
   title: string;
@@ -96,7 +96,7 @@ export async function getCatalogProducts(): Promise<Product[]> {
 }
 
 /** A single product, or undefined when the id is unknown. */
-export async function getCatalogProduct(id: string): Promise<Product | undefined> {
+export async function getCatalogProduct(id: number): Promise<Product | undefined> {
   const list = await getCatalogProducts();
   return list.find((p) => p.id === id);
 }

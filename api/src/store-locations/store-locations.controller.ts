@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseIntPipe,
   Patch,
   Query,
   UseGuards,
@@ -38,7 +39,7 @@ export class StoreLocationsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateStoreDto) {
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateStoreDto) {
     return this.storeLocations.update(id, dto);
   }
 }

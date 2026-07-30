@@ -19,7 +19,7 @@ enum Role {
 }
 
 model User {
-  id           String   @id @default(cuid())
+  id           Int      @id @default(autoincrement())
   email        String   @unique
   passwordHash String
   name         String
@@ -30,11 +30,31 @@ model User {
 
   addresses Address[]
   orders    Order[]
+  reviews   Review[]
+  passwordResets PasswordResetToken[]
+}
+
+/// A single-use, expiring password-reset grant.
+///
+/// Only a SHA-256 hash of the token is stored. The raw token goes out in the
+/// reset link and nowhere else, so a leaked database still cannot be used to
+/// reset anyone's password — the same reasoning as never storing raw passwords.
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  /// Set the moment the token is spent, so a reset link cannot be replayed.
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Address {
-  id        String   @id @default(cuid())
-  userId    String
+  id        Int      @id @default(autoincrement())
+  userId    Int
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   label     String
   line1     String
@@ -56,6 +76,10 @@ model Address {
   orders Order[]
 }
 
+/// Departments and categories keep a human-readable `slug` as their primary
+/// key rather than a surrogate id — it doubles as the URL segment
+/// (`/department/drinks`), so making it numeric would just replace a
+/// meaningful path with an opaque one for no benefit.
 model Department {
   slug           String   @id
   name           String
@@ -85,7 +109,7 @@ model Category {
 }
 
 model Product {
-  id             String   @id @default(cuid())
+  id             Int      @id @default(autoincrement())
   sku            String   @unique
   barcode        String   @unique
   title          String
@@ -99,7 +123,11 @@ model Product {
   listPrice      Decimal? @db.Decimal(10, 2)
   stock          Int
   lowStockAt     Int
+  /// Denormalized average of `productReviews.rating`, recomputed by the
+  /// reviews service on every write. Cached here rather than aggregated on
+  /// every product read, since the catalogue lists dozens of products at once.
   rating         Float    @default(0)
+  /// Denormalized count of `productReviews`, kept in step with `rating`.
   reviews        Int      @default(0)
   /// Uploaded photograph, served from the API's /uploads path. When null the
   /// storefront falls back to the generated `art` + `hue` illustration.
@@ -114,12 +142,13 @@ model Product {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  orderItems OrderItem[]
-  deals      Deal[]      @relation("DealProducts")
+  orderItems     OrderItem[]
+  deals          Deal[]      @relation("DealProducts")
+  productReviews Review[]
 }
 
 model StoreLocation {
-  id          String  @id @default(cuid())
+  id          Int     @id @default(autoincrement())
   name        String
   address     String
   city        String
@@ -133,8 +162,8 @@ model StoreLocation {
 }
 
 model FuelPrice {
-  id            String        @id @default(cuid())
-  storeId       String
+  id            Int           @id @default(autoincrement())
+  storeId       Int
   store         StoreLocation @relation(fields: [storeId], references: [id], onDelete: Cascade)
   grade         String
   price         Decimal       @db.Decimal(10, 2)
@@ -142,7 +171,7 @@ model FuelPrice {
 
 /// A slide in the home page hero carousel.
 model HeroSlide {
-  id         String   @id @default(cuid())
+  id         Int      @id @default(autoincrement())
   sortOrder  Int      @default(0)
   eyebrow    String
   title      String
@@ -165,7 +194,7 @@ model HeroSlide {
 
 /// One of the four cards in the grid under the hero.
 model ShowcaseCard {
-  id        String   @id @default(cuid())
+  id        Int      @id @default(autoincrement())
   sortOrder Int      @default(0)
   title     String
   linkLabel String
@@ -193,7 +222,7 @@ enum DealKind {
 /// can cover a bundle (chips + jerky + nuts) and a product can appear in more
 /// than one promotion at a time.
 model Deal {
-  id          String   @id @default(cuid())
+  id          Int      @id @default(autoincrement())
   kind        DealKind
   title       String
   detail      String
@@ -220,10 +249,10 @@ enum OrderStatus {
 }
 
 model Order {
-  id           String      @id @default(cuid())
-  userId       String
+  id           Int         @id @default(autoincrement())
+  userId       Int
   user         User        @relation(fields: [userId], references: [id])
-  addressId    String?
+  addressId    Int?
   address      Address?    @relation(fields: [addressId], references: [id])
   subtotal     Decimal     @db.Decimal(10, 2)
   discount     Decimal     @default(0) @db.Decimal(10, 2)
@@ -238,11 +267,31 @@ model Order {
 }
 
 model OrderItem {
-  id        String  @id @default(cuid())
-  orderId   String
+  id        Int     @id @default(autoincrement())
+  orderId   Int
   order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId String
+  productId Int
   product   Product @relation(fields: [productId], references: [id])
   quantity  Int
   unitPrice Decimal @db.Decimal(10, 2)
+}
+
+/// A customer's star rating and comment on a product. One review per
+/// customer per product — resubmitting edits it in place rather than piling
+/// up duplicates. `verifiedPurchase` is stamped at write time from the
+/// customer's real order history, not taken from the request.
+model Review {
+  id               Int      @id @default(autoincrement())
+  productId        Int
+  product          Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId           Int
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating           Int
+  title            String?
+  body             String
+  verifiedPurchase Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([productId, userId])
 }

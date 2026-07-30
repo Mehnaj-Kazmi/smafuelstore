@@ -110,9 +110,14 @@ function SignInForm() {
                   Change
                 </button>
               </p>
-              <label htmlFor="password" className="mb-1.5 block text-[13px] font-bold text-ink-soft">
-                Password
-              </label>
+              <span className="mb-1.5 flex items-baseline justify-between gap-3">
+                <label htmlFor="password" className="text-[13px] font-bold text-ink-soft">
+                  Password
+                </label>
+                <Link href="/forgot-password" className="link-draw text-[12px] font-bold text-brand-green">
+                  Forgot password?
+                </Link>
+              </span>
               <input
                 id="password"
                 type="password"

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { categoryMap, departmentMap, discountPercent, stockState, type Product } from "@/lib/catalog";
 import { dealsForProduct, dealKindClass, dealKindLabel } from "@/lib/deals";
 import { useDeals } from "@/lib/deals-context";
@@ -11,24 +11,116 @@ import { useCart } from "@/lib/cart";
 import { useDelivery } from "@/lib/delivery";
 import { useAuthGate } from "@/lib/auth-gate";
 import { useToast } from "@/lib/toast";
+import {
+  deleteReview,
+  fetchMyReview,
+  fetchProductReviews,
+  submitReview,
+  type ApiReview,
+  type ProductReviews,
+} from "@/lib/reviews-api";
 import ProductArt from "./ProductArt";
 import ProductImage from "./ProductImage";
+import StarInput from "./StarInput";
 import StarRating from "./StarRating";
 import WishlistButton from "./WishlistButton";
-
-function ratingBreakdown(rating: number): number[] {
-  const w = [5, 4, 3, 2, 1].map((s) => Math.max(0.5, 6 - Math.abs(s - rating) * 3));
-  const total = w.reduce((a, b) => a + b, 0);
-  return w.map((x) => Math.round((x / total) * 100));
-}
 
 export default function ProductDetail({ product, related }: { product: Product; related: Product[] }) {
   const router = useRouter();
   const { add, items, remove, setQuantity: setCartQuantity } = useCart();
-  const { canOrder, store } = useDelivery();
-  const { requireAuth } = useAuthGate();
+  const { canOrder, store, needsLocation, outOfRange, openLocationPrompt } = useDelivery();
+  const { requireAuth, user } = useAuthGate();
   const { notify } = useToast();
   const [quantity, setQuantity] = useState(1);
+
+  const [reviews, setReviews] = useState<ProductReviews | null>(null);
+  const [myReview, setMyReview] = useState<ApiReview | null>(null);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewTitle, setReviewTitle] = useState("");
+  const [reviewBody, setReviewBody] = useState("");
+  const [reviewError, setReviewError] = useState("");
+  const [savingReview, setSavingReview] = useState(false);
+
+  /* Fetched client-side rather than baked into `product`, so posting a review
+     updates the count on this same page load instead of needing a refresh. */
+  useEffect(() => {
+    let cancelled = false;
+    fetchProductReviews(product.id)
+      .then((r) => !cancelled && setReviews(r))
+      .catch(() => !cancelled && setReviews({ average: 0, count: 0, breakdown: { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 }, items: [] }));
+    return () => {
+      cancelled = true;
+    };
+  }, [product.id]);
+
+  useEffect(() => {
+    if (!user) {
+      setMyReview(null);
+      return;
+    }
+    let cancelled = false;
+    fetchMyReview(product.id)
+      .then((r) => {
+        if (cancelled) return;
+        setMyReview(r);
+        if (r) {
+          setReviewRating(r.rating);
+          setReviewTitle(r.title ?? "");
+          setReviewBody(r.body);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [product.id, user]);
+
+  async function submitReviewForm(e: React.FormEvent) {
+    e.preventDefault();
+    if (!requireAuth("review")) return;
+    if (reviewRating < 1) {
+      setReviewError("Pick a star rating first");
+      return;
+    }
+    if (reviewBody.trim().length < 3) {
+      setReviewError("Say a little more about it");
+      return;
+    }
+
+    setSavingReview(true);
+    setReviewError("");
+    try {
+      const saved = await submitReview({
+        productId: product.id,
+        rating: reviewRating,
+        title: reviewTitle.trim() || undefined,
+        body: reviewBody.trim(),
+      });
+      setMyReview(saved);
+      setReviews(await fetchProductReviews(product.id));
+      notify({ message: myReview ? "Review updated" : "Review posted", tone: "good" });
+    } catch (err) {
+      setReviewError(err instanceof Error ? err.message : "Could not save your review");
+    } finally {
+      setSavingReview(false);
+    }
+  }
+
+  async function removeMyReview() {
+    if (!myReview) return;
+    if (!confirm("Delete your review?")) return;
+    try {
+      await deleteReview(myReview.id);
+      setMyReview(null);
+      setReviewRating(0);
+      setReviewTitle("");
+      setReviewBody("");
+      setReviews(await fetchProductReviews(product.id));
+      notify({ message: "Review deleted", tone: "good" });
+    } catch {
+      notify({ message: "Could not delete your review", tone: "bad" });
+    }
+  }
 
   const { whole, cents } = priceParts(product.price);
   const off = discountPercent(product);
@@ -36,12 +128,28 @@ export default function ProductDetail({ product, related }: { product: Product; 
   const category = categoryMap[product.category];
   const stock = stockState(product);
   const productDeals = dealsForProduct(product.id, useDeals());
-  const breakdown = ratingBreakdown(product.rating);
   const soldOut = stock === "out";
-  const blocked = soldOut || !canOrder;
+  /* A missing location is not a dead end — the button asks for it. Only a real
+     sell-out or a verified out-of-area disables the controls. */
+  const blocked = soldOut || outOfRange;
+  const liveRating = reviews?.average ?? product.rating;
+  const liveCount = reviews?.count ?? product.reviews;
+
+  /** True when the click was spent asking for a location instead of ordering. */
+  function askedForLocation(): boolean {
+    if (!needsLocation) return false;
+    openLocationPrompt();
+    notify({
+      message: "Where are we delivering?",
+      detail: "Set your location and we'll check you're in our delivery area.",
+      tone: "default",
+    });
+    return true;
+  }
 
   function addToCart() {
     if (blocked) return;
+    if (askedForLocation()) return;
     if (!requireAuth("cart")) return;
 
     /* Captured first so Undo restores the previous quantity rather than
@@ -62,6 +170,7 @@ export default function ProductDetail({ product, related }: { product: Product; 
 
   function buyNow() {
     if (blocked) return;
+    if (askedForLocation()) return;
     if (!requireAuth("buy")) return;
     add(product.id, quantity);
     router.push("/checkout");
@@ -114,11 +223,19 @@ export default function ProductDetail({ product, related }: { product: Product; 
             </Link>
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="text-sm font-semibold text-white">{product.rating.toFixed(1)}</span>
-              <StarRating rating={product.rating} size={16} />
-              <a href="#reviews" className="link-draw text-[13px] font-bold text-brand-green">
-                {product.reviews.toLocaleString()} ratings
-              </a>
+              {liveCount > 0 ? (
+                <>
+                  <span className="text-sm font-semibold text-white">{liveRating.toFixed(1)}</span>
+                  <StarRating rating={liveRating} size={16} />
+                  <a href="#reviews" className="link-draw text-[13px] font-bold text-brand-green">
+                    {liveCount.toLocaleString()} {liveCount === 1 ? "rating" : "ratings"}
+                  </a>
+                </>
+              ) : (
+                <a href="#reviews" className="link-draw text-[13px] font-bold text-brand-green">
+                  Be the first to review this
+                </a>
+              )}
             </div>
 
             <hr className="my-5 border-line" />
@@ -183,10 +300,15 @@ export default function ProductDetail({ product, related }: { product: Product; 
                 <p className="mt-1 text-[13px] leading-5 text-ink-soft">
                   Delivered in about <strong className="text-white">30 minutes</strong> from {store.name}.
                 </p>
-              ) : (
+              ) : outOfRange ? (
                 <p className="mt-1 text-[13px] leading-5 text-brand-orange">
                   You&apos;re outside our delivery area, so ordering is unavailable. You can still browse and save
                   items.
+                </p>
+              ) : (
+                <p className="mt-1 text-[13px] leading-5 text-brand-orange">
+                  Set your delivery location to start ordering — we deliver within {store.radiusMiles} miles of{" "}
+                  {store.city}.
                 </p>
               )}
 
@@ -213,7 +335,13 @@ export default function ProductDetail({ product, related }: { product: Product; 
                   disabled={blocked}
                   className="btn-pill btn-cart w-full py-3 disabled:cursor-not-allowed disabled:opacity-45"
                 >
-                  {soldOut ? "Out of stock" : canOrder ? "Add to cart" : "Outside delivery area"}
+                  {soldOut
+                    ? "Out of stock"
+                    : outOfRange
+                      ? "Outside delivery area"
+                      : needsLocation
+                        ? "Set delivery location"
+                        : "Add to cart"}
                 </button>
                 <button
                   type="button"
@@ -244,44 +372,100 @@ export default function ProductDetail({ product, related }: { product: Product; 
         <h2 className="mb-5 text-[22px] font-extrabold text-white">Customer reviews</h2>
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[280px_minmax(0,1fr)]">
           <div>
-            <div className="flex items-center gap-2">
-              <StarRating rating={product.rating} size={18} />
-              <span className="text-lg font-bold text-white">{product.rating.toFixed(1)} out of 5</span>
-            </div>
-            <p className="mb-4 mt-1 text-[13px] text-ink-faint">{product.reviews.toLocaleString()} ratings</p>
-            {[5, 4, 3, 2, 1].map((star, i) => (
-              <div key={star} className="flex items-center gap-2 py-0.5 text-[13px]">
-                <span className="w-12 shrink-0 font-semibold text-ink-soft">{star} star</span>
-                <span className="h-5 flex-1 overflow-hidden rounded-md border border-line bg-surface-3">
-                  <span
-                    className="block h-full rounded-md bg-brand-green transition-[width] duration-700"
-                    style={{ width: `${breakdown[i]}%` }}
-                  />
-                </span>
-                <span className="w-9 shrink-0 text-right text-ink-faint">{breakdown[i]}%</span>
+            {liveCount > 0 ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <StarRating rating={liveRating} size={18} />
+                  <span className="text-lg font-bold text-white">{liveRating.toFixed(1)} out of 5</span>
+                </div>
+                <p className="mb-4 mt-1 text-[13px] text-ink-faint">
+                  {liveCount.toLocaleString()} {liveCount === 1 ? "rating" : "ratings"}
+                </p>
+                {([5, 4, 3, 2, 1] as const).map((star) => {
+                  const count = reviews?.breakdown[String(star) as "1" | "2" | "3" | "4" | "5"] ?? 0;
+                  const pct = liveCount > 0 ? Math.round((count / liveCount) * 100) : 0;
+                  return (
+                    <div key={star} className="flex items-center gap-2 py-0.5 text-[13px]">
+                      <span className="w-12 shrink-0 font-semibold text-ink-soft">{star} star</span>
+                      <span className="h-5 flex-1 overflow-hidden rounded-md border border-line bg-surface-3">
+                        <span
+                          className="block h-full rounded-md bg-brand-green transition-[width] duration-700"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </span>
+                      <span className="w-9 shrink-0 text-right text-ink-faint">{pct}%</span>
+                    </div>
+                  );
+                })}
+              </>
+            ) : (
+              <p className="text-[13px] leading-5 text-ink-faint">
+                No ratings yet. Be the first to say what you think.
+              </p>
+            )}
+
+            <form onSubmit={submitReviewForm} className="mt-6 rounded-xl border border-line bg-surface-2 p-4">
+              <h3 className="mb-3 text-sm font-extrabold text-white">
+                {myReview ? "Your review" : "Write a review"}
+              </h3>
+              <StarInput value={reviewRating} onChange={setReviewRating} />
+              <input
+                value={reviewTitle}
+                onChange={(e) => setReviewTitle(e.target.value)}
+                placeholder="Headline (optional)"
+                maxLength={120}
+                className="mt-3 w-full rounded-lg border border-line bg-surface-3 px-3 py-2 text-[13px] text-white outline-none focus:border-brand-green"
+              />
+              <textarea
+                value={reviewBody}
+                onChange={(e) => setReviewBody(e.target.value)}
+                placeholder="What did you think?"
+                rows={3}
+                maxLength={2000}
+                className="mt-2 w-full rounded-lg border border-line bg-surface-3 px-3 py-2 text-[13px] text-white outline-none focus:border-brand-green"
+              />
+              {reviewError && <p className="mt-2 text-[12px] font-semibold text-sma-deal">{reviewError}</p>}
+              <div className="mt-3 flex gap-2">
+                <button type="submit" disabled={savingReview} className="btn-pill btn-cart py-2 text-[13px] disabled:opacity-60">
+                  {savingReview ? "Saving…" : myReview ? "Update review" : "Post review"}
+                </button>
+                {myReview && (
+                  <button type="button" onClick={removeMyReview} className="btn-pill btn-ghost py-2 text-[13px]">
+                    Delete
+                  </button>
+                )}
               </div>
-            ))}
+            </form>
           </div>
 
           <div className="space-y-6">
-            {sampleReviews(product).map((r) => (
-              <article key={r.name} className="border-b border-line pb-6 last:border-0">
-                <div className="mb-1.5 flex items-center gap-2">
-                  <span className="grid h-8 w-8 place-items-center rounded-full bg-surface-3 text-xs font-extrabold text-white">
-                    {r.name.charAt(0)}
-                  </span>
-                  <span className="text-[13px] font-semibold text-ink-soft">{r.name}</span>
-                </div>
-                <div className="mb-1.5 flex items-center gap-2">
-                  <StarRating rating={r.stars} />
-                  <span className="text-[13px] font-bold text-white">{r.headline}</span>
-                </div>
-                <p className="mb-1.5 text-xs text-ink-faint">
-                  {r.date} · <span className="font-bold text-brand-green">Verified purchase</span>
-                </p>
-                <p className="text-[13px] leading-6 text-ink-soft">{r.body}</p>
-              </article>
-            ))}
+            {reviews === null ? (
+              <p className="text-[13px] text-ink-faint">Loading reviews…</p>
+            ) : reviews.items.length === 0 ? (
+              <p className="text-[13px] text-ink-faint">No reviews yet.</p>
+            ) : (
+              reviews.items.map((r) => (
+                <article key={r.id} className="border-b border-line pb-6 last:border-0">
+                  <div className="mb-1.5 flex items-center gap-2">
+                    <span className="grid h-8 w-8 place-items-center rounded-full bg-surface-3 text-xs font-extrabold text-white">
+                      {r.user.name.charAt(0)}
+                    </span>
+                    <span className="text-[13px] font-semibold text-ink-soft">{r.user.name}</span>
+                  </div>
+                  <div className="mb-1.5 flex items-center gap-2">
+                    <StarRating rating={r.rating} />
+                    {r.title && <span className="text-[13px] font-bold text-white">{r.title}</span>}
+                  </div>
+                  <p className="mb-1.5 text-xs text-ink-faint">
+                    {new Date(r.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+                    {r.verifiedPurchase && (
+                      <> · <span className="font-bold text-brand-green">Verified purchase</span></>
+                    )}
+                  </p>
+                  <p className="text-[13px] leading-6 text-ink-soft">{r.body}</p>
+                </article>
+              ))
+            )}
           </div>
         </div>
       </section>
@@ -330,18 +514,4 @@ function Row({ label, value }: { label: string; value: string }) {
       <dd className="text-ink-soft">{value}</dd>
     </div>
   );
-}
-
-/** Deterministic sample feedback so a product always shows the same reviews. */
-function sampleReviews(product: Product) {
-  const names = ["Ayesha K.", "Daniel R.", "Priya S."];
-  const headlines = ["Exactly what I needed", "Good price for the size", "Arrived fast"];
-  const bodies = [
-    `Grabbed this on the way to work and it was as described. ${product.bullets[0]} — that was the deciding factor over the cheaper option.`,
-    `Delivery took about 25 minutes, which beats driving over. ${product.bullets[1] ?? "Matches the listing."}`,
-    `Third time ordering ${product.brand} from here. Consistent, and the driver actually checked the bag before handing it over.`,
-  ];
-  const dates = ["12 June 2026", "28 May 2026", "3 May 2026"];
-  const stars = [5, 4.5, 4];
-  return names.map((name, i) => ({ name, headline: headlines[i], body: bodies[i], date: dates[i], stars: stars[i] }));
 }

@@ -16,6 +16,7 @@ import { StoreProvider } from "@/lib/store-context";
 import { getStores } from "@/lib/store-source";
 import { ToastProvider } from "@/lib/toast";
 import Toaster from "@/components/Toaster";
+import AdminSwitch from "@/components/AdminSwitch";
 
 export const metadata: Metadata = {
   title: {
@@ -57,6 +58,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <IntroSplash />
               <LocationPrompt />
               <Toaster />
+              <AdminSwitch />
             </CartProvider>
             </ToastProvider>
           </DeliveryProvider>

@@ -12,13 +12,14 @@ import { useAuth } from "./auth";
  * sent to /signin with enough context to come straight back to what they were
  * doing, so the interruption costs them one step rather than their place.
  */
-export type AuthIntent = "cart" | "buy" | "wishlist" | "checkout";
+export type AuthIntent = "cart" | "buy" | "wishlist" | "checkout" | "review";
 
 const intentCopy: Record<AuthIntent, string> = {
   cart: "Sign in to add items to your cart",
   buy: "Sign in to complete your order",
   wishlist: "Sign in to save items you like",
   checkout: "Sign in to check out",
+  review: "Sign in to write a review",
 };
 
 export function intentMessage(intent: string | null): string | null {

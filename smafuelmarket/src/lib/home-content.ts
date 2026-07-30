@@ -3,7 +3,7 @@ import type { ArtKey } from "./catalog";
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 
 export type HeroSlide = {
-  id: string;
+  id: number;
   eyebrow: string;
   title: string;
   blurb: string;
@@ -26,7 +26,7 @@ export type ShowcaseTile = {
 };
 
 export type ShowcaseCardContent = {
-  id: string;
+  id: number;
   title: string;
   linkLabel: string;
   linkHref: string;
@@ -43,7 +43,7 @@ export type ShowcaseCardContent = {
  */
 const FALLBACK_SLIDES: HeroSlide[] = [
   {
-    id: "fallback-delivery",
+    id: 0,
     eyebrow: "Open 24 hours · Delivered in 30 minutes",
     title: "The whole store,\nbrought to your door",
     blurb:
@@ -60,7 +60,7 @@ const FALLBACK_SLIDES: HeroSlide[] = [
 
 const FALLBACK_CARDS: ShowcaseCardContent[] = [
   {
-    id: "fallback-breakfast",
+    id: 0,
     title: "Breakfast, served early",
     linkLabel: "Shop the bakery",
     linkHref: "/department/bakery",

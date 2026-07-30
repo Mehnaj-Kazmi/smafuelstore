@@ -10,7 +10,7 @@
  */
 
 export type StoreLocation = {
-  id: string;
+  id: number;
   name: string;
   address: string;
   city: string;
@@ -25,14 +25,14 @@ export type StoreLocation = {
 
 export const stores: StoreLocation[] = [
   {
-    id: "store-001",
-    name: "SMA Fuel & Market — Riverside",
-    address: "1420 Riverside Parkway",
-    city: "Riverside",
+    id: 1,
+    name: "SMA Fuel & Market — Karachi",
+    address: "Clifton Block 8",
+    city: "Karachi",
     phone: "(555) 018-4420",
-    lat: 33.9806,
-    lng: -117.3755,
-    radiusMiles: 2,
+    lat: 24.811,
+    lng: 67.029,
+    radiusMiles: 5,
     hours: "Open 24 hours",
     fuelPrices: [
       { grade: "Regular", price: 3.49 },

@@ -5,7 +5,7 @@ import { products as seedProducts, type Product } from "./catalog";
 
 type CatalogValue = {
   products: Product[];
-  getProduct: (id: string) => Product | undefined;
+  getProduct: (id: number) => Product | undefined;
 };
 
 /*
@@ -38,6 +38,6 @@ export function useCatalog(): CatalogValue {
 
   return useMemo(() => {
     const byId = new Map(products.map((p) => [p.id, p]));
-    return { products, getProduct: (id: string) => byId.get(id) };
+    return { products, getProduct: (id: number) => byId.get(id) };
   }, [products]);
 }

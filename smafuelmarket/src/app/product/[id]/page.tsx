@@ -14,13 +14,13 @@ type Params = Promise<{ id: string }>;
 export const dynamicParams = true;
 
 export function generateStaticParams() {
-  return seedProducts.map((p) => ({ id: p.id }));
+  return seedProducts.map((p) => ({ id: String(p.id) }));
 }
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { id } = await params;
   const catalog = await getCatalogProducts();
-  const product = getProduct(id, catalog);
+  const product = getProduct(Number(id), catalog);
   if (!product) return { title: "Product not found" };
   return { title: product.title, description: product.description.slice(0, 155) };
 }
@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 export default async function ProductPage({ params }: { params: Params }) {
   const { id } = await params;
   const catalog = await getCatalogProducts();
-  const product = getProduct(id, catalog);
+  const product = getProduct(Number(id), catalog);
   if (!product) notFound();
   return <ProductDetail product={product} related={relatedProducts(product, 6, catalog)} />;
 }

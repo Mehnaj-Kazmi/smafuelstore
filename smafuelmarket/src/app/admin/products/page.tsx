@@ -11,7 +11,7 @@ type Department = { slug: string; name: string };
 type Category = { slug: string; name: string; departmentSlug: string };
 
 type ApiProduct = {
-  id: string;
+  id: number;
   sku: string;
   barcode: string;
   title: string;
@@ -57,7 +57,7 @@ type FormState = {
 
 const emptyForm: FormState = {
   sku: "", barcode: "", title: "", brand: "", departmentSlug: "", categorySlug: "",
-  unit: "", price: "", listPrice: "", stock: "0", lowStockAt: "0", imageUrl: "", art: "chips", hue: "200",
+  unit: "", price: "", listPrice: "", stock: "", lowStockAt: "", imageUrl: "", art: "chips", hue: "200",
   ageRestricted: false, tags: "", bullets: "", description: "",
 };
 
@@ -79,9 +79,11 @@ export default function AdminProductsPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [error, setError] = useState("");
-  const [modal, setModal] = useState<{ mode: "create" | "edit"; id?: string } | null>(null);
+  const [modal, setModal] = useState<{ mode: "create" | "edit"; id?: number } | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [query, setQuery] = useState("");
+  const [deptFilter, setDeptFilter] = useState("all");
 
   async function loadAll() {
     setError("");
@@ -184,6 +186,20 @@ export default function AdminProductsPage() {
     return <Panel title="Catalogue"><p className="text-sm text-sma-muted">Loading…</p></Panel>;
   }
 
+  /*
+   * Matched against several fields at once, and every term must hit somewhere.
+   * A catalogue is searched by whatever the operator happens to have — a SKU
+   * off a shelf label, a barcode off the packet, half a brand name — so
+   * restricting this to the title would miss most real lookups.
+   */
+  const shown = products.filter((p) => {
+    if (deptFilter !== "all" && p.departmentSlug !== deptFilter) return false;
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    const hay = `${p.title} ${p.brand} ${p.sku} ${p.barcode} ${p.departmentSlug} ${p.categorySlug} ${p.unit}`.toLowerCase();
+    return q.split(/\s+/).every((t) => hay.includes(t));
+  });
+
   const discounted = products.filter((p) => discountPercent(p) !== null);
   const restricted = products.filter((p) => p.ageRestricted);
 
@@ -199,13 +215,53 @@ export default function AdminProductsPage() {
       <Panel
         title="Catalogue"
         action={
-          <button type="button" onClick={openCreate} className="btn-pill btn-cart text-[13px] font-medium">
-            + Add product
-          </button>
+          <span className="flex flex-wrap items-center gap-2">
+            <label className="sr-only" htmlFor="product-search">Search the catalogue</label>
+            <input
+              id="product-search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search name, SKU, barcode, brand…"
+              className="w-[min(60vw,260px)] rounded-lg border border-line bg-surface-2 px-3 py-1.5 text-[13px] text-white outline-none transition-colors placeholder:text-ink-faint focus:border-brand-green"
+            />
+            <label className="sr-only" htmlFor="product-dept">Filter by department</label>
+            <select
+              id="product-dept"
+              value={deptFilter}
+              onChange={(e) => setDeptFilter(e.target.value)}
+              className="rounded-lg border border-line bg-surface-2 px-3 py-1.5 text-[13px] text-white outline-none focus:border-brand-green"
+            >
+              <option value="all">All departments</option>
+              {departments.map((d) => (
+                <option key={d.slug} value={d.slug}>{d.name}</option>
+              ))}
+            </select>
+            {(query || deptFilter !== "all") && (
+              <button
+                type="button"
+                onClick={() => { setQuery(""); setDeptFilter("all"); }}
+                className="text-[12px] font-bold text-ink-faint hover:text-white"
+              >
+                Clear
+              </button>
+            )}
+            <button type="button" onClick={openCreate} className="btn-pill btn-cart text-[13px] font-medium">
+              + Add product
+            </button>
+          </span>
         }
       >
+        {shown.length === 0 ? (
+          <p className="py-6 text-[13px] text-ink-faint">
+            Nothing matches that search. {products.length} products in the catalogue.
+          </p>
+        ) : (
+        <>
+        <p className="mb-3 text-[12px] text-ink-faint">
+          Showing {shown.length} of {products.length} products
+        </p>
         <Table head={["Product", "SKU", "Department", "Brand", "Price", "Stock", ""]}>
-          {products.map((p) => {
+          {shown.map((p) => {
             const state = stockState(p);
             const off = discountPercent(p);
             return (
@@ -235,6 +291,8 @@ export default function AdminProductsPage() {
             );
           })}
         </Table>
+        </>
+        )}
       </Panel>
 
       {modal && (
@@ -279,8 +337,15 @@ export default function AdminProductsPage() {
               <TextField label="Price" type="number" step="0.01" value={form.price} onChange={(v) => setForm({ ...form, price: v })} required />
               <TextField label="List price (optional)" type="number" step="0.01" value={form.listPrice} onChange={(v) => setForm({ ...form, listPrice: v })} />
 
-              <TextField label="Stock" type="number" value={form.stock} onChange={(v) => setForm({ ...form, stock: v })} required />
-              <TextField label="Low stock at" type="number" value={form.lowStockAt} onChange={(v) => setForm({ ...form, lowStockAt: v })} required />
+              <div>
+                <TextField label="Stock on hand" type="number" value={form.stock} onChange={(v) => setForm({ ...form, stock: v })} required />
+                {form.stock.trim() === "0" && (
+                  <p className="mt-1 text-[11px] font-semibold text-brand-orange">
+                    Zero means this product shows as “Out of stock” and cannot be ordered.
+                  </p>
+                )}
+              </div>
+              <TextField label="Low stock warning at" type="number" value={form.lowStockAt} onChange={(v) => setForm({ ...form, lowStockAt: v })} required />
 
               <label className="flex items-center gap-2 text-[13px] sm:col-span-2">
                 <input

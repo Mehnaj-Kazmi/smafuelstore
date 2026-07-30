@@ -8,7 +8,7 @@
  * the shared constants in a plain module lets both sides import them safely.
  */
 
-export type CartLine = { productId: string; quantity: number };
+export type CartLine = { productId: number; quantity: number };
 
 export type OrderStatus =
   | "pending" | "confirmed" | "preparing" | "out-for-delivery" | "delivered" | "cancelled";
@@ -37,7 +37,7 @@ export const orderStatusTone: Record<OrderStatus, "good" | "warn" | "bad" | "inf
 };
 
 export type Order = {
-  id: string;
+  id: number;
   placedAt: string;
   lines: CartLine[];
   subtotal: number;

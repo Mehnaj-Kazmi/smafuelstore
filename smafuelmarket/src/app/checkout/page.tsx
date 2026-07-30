@@ -19,7 +19,7 @@ const FREE_DELIVERY_OVER = 20;
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, subtotal, count, clear, hydrated, hasAgeRestricted } = useCart();
-  const { canOrder, store } = useDelivery();
+  const { canOrder, store, needsLocation, outOfRange, openLocationPrompt } = useDelivery();
   const { user, hydrated: authReady } = useAuth();
 
   /* The cart button already gates this, but the route has to hold the line on
@@ -48,6 +48,27 @@ export default function CheckoutPage() {
 
   if (!hydrated || !authReady || !user) {
     return <div className="mx-auto max-w-[1100px] px-4 py-10 text-sm text-ink-faint">Loading checkout…</div>;
+  }
+
+  /* Not knowing where they are is recoverable here, so it offers the dialog
+     rather than turning them away like a verified out-of-area does. */
+  if (needsLocation) {
+    return (
+      <div className="mx-auto max-w-[1100px] px-4 py-16 text-center">
+        <h1 className="text-2xl font-bold">Where are we delivering?</h1>
+        <p className="mx-auto mt-2 max-w-md text-sm text-ink-faint">
+          We deliver within {store.radiusMiles} miles of {store.city}. Set your location to finish checking out —
+          your basket is saved.
+        </p>
+        <button
+          type="button"
+          onClick={openLocationPrompt}
+          className="btn-pill btn-cart mt-5 inline-block font-medium"
+        >
+          Set delivery location
+        </button>
+      </div>
+    );
   }
 
   if (!canOrder) {

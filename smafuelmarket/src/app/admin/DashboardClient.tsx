@@ -106,7 +106,7 @@ export default function DashboardClient() {
             <Table head={["Order", "Customer", "Items", "Total", "Status"]}>
               {orders.slice(0, 6).map((o) => (
                 <tr key={o.id}>
-                  <td className="py-2 pr-4 font-mono text-xs text-white">{o.id.slice(-8).toUpperCase()}</td>
+                  <td className="py-2 pr-4 font-mono text-xs text-white">#{String(o.id).padStart(6, "0")}</td>
                   <td className="py-2 pr-4">{o.user?.name ?? "—"}</td>
                   <td className="py-2 pr-4 tabular-nums">{o.items.reduce((n, i) => n + i.quantity, 0)}</td>
                   <td className="py-2 pr-4 tabular-nums">{fmt(money(o.total))}</td>

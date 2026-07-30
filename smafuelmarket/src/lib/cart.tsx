@@ -10,17 +10,17 @@ export type { CartLine, Order, OrderStatus } from "./orders";
 
 type State = {
   lines: CartLine[];
-  wishlist: string[];
+  wishlist: number[];
   hydrated: boolean;
 };
 
 type Action =
   | { type: "hydrate"; state: Omit<State, "hydrated"> }
-  | { type: "add"; productId: string; quantity: number }
-  | { type: "setQuantity"; productId: string; quantity: number }
-  | { type: "remove"; productId: string }
+  | { type: "add"; productId: number; quantity: number }
+  | { type: "setQuantity"; productId: number; quantity: number }
+  | { type: "remove"; productId: number }
   | { type: "clear" }
-  | { type: "toggleWish"; productId: string };
+  | { type: "toggleWish"; productId: number };
 
 /*
  * Basket and wishlist are stored per account.
@@ -34,7 +34,7 @@ type Action =
 const STORAGE_PREFIX = "sma-gas-store:v2";
 const GUEST = "guest";
 
-function storageKey(userId: string | null) {
+function storageKey(userId: number | null) {
   return `${STORAGE_PREFIX}:${userId ?? GUEST}`;
 }
 
@@ -45,7 +45,7 @@ const initial: State = { lines: [], wishlist: [], hydrated: false };
  * caps below come from the live product list the storefront rendered — not from
  * the seed data, which would cap a newly added product at a stale number.
  */
-function makeReducer(getProduct: (id: string) => Product | undefined) {
+function makeReducer(getProduct: (id: number) => Product | undefined) {
   return function reducer(state: State, action: Action): State {
     switch (action.type) {
       case "hydrate":
@@ -115,17 +115,17 @@ type Value = {
   savings: number;
   /** True when the cart holds anything requiring an ID check at handover. */
   hasAgeRestricted: boolean;
-  add: (productId: string, quantity?: number) => void;
-  setQuantity: (productId: string, quantity: number) => void;
-  remove: (productId: string) => void;
+  add: (productId: number, quantity?: number) => void;
+  setQuantity: (productId: number, quantity: number) => void;
+  remove: (productId: number) => void;
   clear: () => void;
-  toggleWish: (productId: string) => void;
-  isWished: (productId: string) => boolean;
+  toggleWish: (productId: number) => void;
+  isWished: (productId: number) => boolean;
 };
 
 const CartContext = createContext<Value | null>(null);
 
-function read(key: string): { lines: CartLine[]; wishlist: string[] } {
+function read(key: string): { lines: CartLine[]; wishlist: number[] } {
   try {
     const raw = window.localStorage.getItem(key);
     const parsed = raw ? (JSON.parse(raw) as Partial<State>) : {};
@@ -143,7 +143,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const userId = user?.id ?? null;
   /** Which bucket the current state came from, so we never save into another. */
-  const loadedFor = useRef<string | null>(null);
+  const loadedFor = useRef<number | null>(null);
 
   useEffect(() => {
     if (!authReady) return;

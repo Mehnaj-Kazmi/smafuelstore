@@ -11,7 +11,7 @@ import {
 } from 'class-validator';
 
 export class OrderLineDto {
-  @IsString() productId: string;
+  @Type(() => Number) @IsInt() productId: number;
   @Type(() => Number) @IsInt() @Min(1) quantity: number;
 }
 

@@ -8,10 +8,10 @@ import { imageSrc } from "@/components/ProductImage";
 
 type DealKind = "flash" | "percent" | "bogo" | "weekend";
 
-type DealProduct = { id: string; title: string; price: string | number };
+type DealProduct = { id: number; title: string; price: string | number };
 
 type ApiDeal = {
-  id: string;
+  id: number;
   kind: DealKind;
   title: string;
   detail: string;
@@ -22,7 +22,7 @@ type ApiDeal = {
   products: DealProduct[];
 };
 
-type ApiProduct = { id: string; title: string; brand: string };
+type ApiProduct = { id: number; title: string; brand: string };
 
 const kindLabel: Record<DealKind, string> = {
   flash: "Flash Sale",
@@ -46,7 +46,7 @@ type FormState = {
   endsInHours: string;
   imageUrl: string;
   active: boolean;
-  productIds: string[];
+  productIds: number[];
 };
 
 const emptyForm: FormState = {
@@ -63,10 +63,11 @@ const emptyForm: FormState = {
 export default function DealsAdmin() {
   const [deals, setDeals] = useState<ApiDeal[] | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
-  const [modal, setModal] = useState<{ mode: "create" } | { mode: "edit"; id: string } | null>(null);
+  const [modal, setModal] = useState<{ mode: "create" } | { mode: "edit"; id: number } | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [query, setQuery] = useState("");
 
   const loadAll = useCallback(async () => {
     try {
@@ -95,6 +96,16 @@ export default function DealsAdmin() {
       products: new Set(list.flatMap((d) => d.products.map((p) => p.id))).size,
     };
   }, [deals]);
+
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const list = deals ?? [];
+    if (!q) return list;
+    return list.filter((d) => {
+      const hay = `${d.title} ${d.detail} ${kindLabel[d.kind]} ${d.products.map((p) => p.title).join(" ")}`.toLowerCase();
+      return q.split(/\s+/).every((t) => hay.includes(t));
+    });
+  }, [deals, query]);
 
   function openCreate() {
     setForm(emptyForm);
@@ -199,18 +210,45 @@ export default function DealsAdmin() {
       <Panel
         title="Promotions"
         action={
-          <button type="button" onClick={openCreate} className="btn-pill btn-cart text-[13px]">
-            + New deal
-          </button>
+          <span className="flex flex-wrap items-center gap-2">
+            {deals && deals.length > 0 && (
+              <>
+                <label className="sr-only" htmlFor="deal-search">Search promotions</label>
+                <input
+                  id="deal-search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search title, detail, product…"
+                  className="w-[min(60vw,240px)] rounded-lg border border-line bg-surface-2 px-3 py-1.5 text-[13px] text-white outline-none transition-colors placeholder:text-ink-faint focus:border-brand-green"
+                />
+                {query && (
+                  <button
+                    type="button"
+                    onClick={() => setQuery("")}
+                    className="text-[12px] font-bold text-ink-faint hover:text-white"
+                  >
+                    Clear
+                  </button>
+                )}
+              </>
+            )}
+            <button type="button" onClick={openCreate} className="btn-pill btn-cart text-[13px]">
+              + New deal
+            </button>
+          </span>
         }
       >
         {!deals ? (
           <p className="text-[13px] text-ink-faint">Loading deals…</p>
         ) : deals.length === 0 ? (
           <p className="text-[13px] text-ink-faint">No promotions yet. Create one to get started.</p>
+        ) : shown.length === 0 ? (
+          <p className="text-[13px] text-ink-faint">Nothing matches that search. {deals.length} promotions total.</p>
         ) : (
+          <>
+          <p className="mb-3 text-[12px] text-ink-faint">Showing {shown.length} of {deals.length} promotions</p>
           <Table head={["", "Deal", "Type", "Products", "Discount", "Ends", "Status", ""]}>
-            {deals.map((d) => (
+            {shown.map((d) => (
               <tr key={d.id} className={d.active ? "" : "opacity-55"}>
                 <td className="py-2.5 pr-3">
                   <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-lg border border-line bg-surface-2">
@@ -257,6 +295,7 @@ export default function DealsAdmin() {
               </tr>
             ))}
           </Table>
+          </>
         )}
       </Panel>
 

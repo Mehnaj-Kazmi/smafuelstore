@@ -20,7 +20,7 @@ export class DealsService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: number) {
     const deal = await this.prisma.deal.findUnique({ where: { id }, include: withProducts });
     if (!deal) throw new NotFoundException(`Deal ${id} not found`);
     return deal;
@@ -34,7 +34,7 @@ export class DealsService {
     });
   }
 
-  async update(id: string, dto: UpdateDealDto) {
+  async update(id: number, dto: UpdateDealDto) {
     await this.findOne(id);
     const { productIds, ...rest } = dto;
 
@@ -51,7 +51,7 @@ export class DealsService {
     });
   }
 
-  async remove(id: string) {
+  async remove(id: number) {
     await this.findOne(id);
     return this.prisma.deal.delete({ where: { id } });
   }

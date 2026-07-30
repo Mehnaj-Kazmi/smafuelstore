@@ -30,7 +30,7 @@ export class OrdersService {
    * order is not written and no stock is taken. Otherwise a customer could end
    * up with a half-fulfilled order and the shop with wrong inventory.
    */
-  async create(userId: string, dto: CreateOrderDto) {
+  async create(userId: number, dto: CreateOrderDto) {
     const ids = dto.items.map((i) => i.productId);
     const products = await this.prisma.product.findMany({ where: { id: { in: ids } } });
 
@@ -104,7 +104,7 @@ export class OrdersService {
   }
 
   /** A customer's own orders, newest first. */
-  findMine(userId: string) {
+  findMine(userId: number) {
     return this.prisma.order.findMany({
       where: { userId },
       include: withDetail,
@@ -124,7 +124,7 @@ export class OrdersService {
    * One order. A customer may only read their own; an admin may read any, so
    * order ids cannot be walked to read other people's addresses.
    */
-  async findOne(id: string, userId: string, role: Role) {
+  async findOne(id: number, userId: number, role: Role) {
     const order = await this.prisma.order.findUnique({ where: { id }, include: withDetail });
     if (!order) throw new NotFoundException(`Order ${id} not found`);
     if (role !== Role.ADMIN && order.userId !== userId) {
@@ -133,7 +133,7 @@ export class OrdersService {
     return order;
   }
 
-  async updateStatus(id: string, status: OrderStatus) {
+  async updateStatus(id: number, status: OrderStatus) {
     const order = await this.prisma.order.findUnique({ where: { id } });
     if (!order) throw new NotFoundException(`Order ${id} not found`);
 

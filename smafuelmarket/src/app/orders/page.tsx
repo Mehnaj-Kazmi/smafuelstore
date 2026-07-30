@@ -63,7 +63,7 @@ function OrdersView() {
         <div className="mb-6 rounded-xl border border-brand-green/40 bg-brand-green/10 p-5">
           <h1 className="text-2xl font-extrabold text-brand-green">Order confirmed</h1>
           <p className="mt-1 text-sm text-ink-soft">
-            Order <span className="font-mono font-bold text-white">{justPlaced.slice(-8).toUpperCase()}</span> is
+            Order <span className="font-mono font-bold text-white">#{justPlaced.padStart(6, "0")}</span> is
             being prepared. You&apos;ll get a notification when the driver leaves the store.
           </p>
           <p className="mt-1 text-sm text-ink-faint">Estimated arrival: about 30 minutes.</p>
@@ -111,7 +111,7 @@ function OrderCard({ order }: { order: ApiOrder }) {
         </span>
         <span className="text-right">
           <span className="block text-[11px] uppercase tracking-wider text-ink-faint">Order</span>
-          <span className="block font-mono text-sm text-ink-soft">{order.id.slice(-8).toUpperCase()}</span>
+          <span className="block font-mono text-sm text-ink-soft">#{String(order.id).padStart(6, "0")}</span>
         </span>
       </div>
 

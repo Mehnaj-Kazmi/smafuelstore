@@ -3,7 +3,7 @@ import { deals as seedDeals, type Deal, type DealKind } from "./deals";
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 
 type ApiDeal = {
-  id: string;
+  id: number;
   kind: string;
   title: string;
   detail: string;
@@ -11,7 +11,7 @@ type ApiDeal = {
   endsInHours: number | null;
   imageUrl: string | null;
   active: boolean;
-  products: { id: string }[];
+  products: { id: number }[];
 };
 
 function toDeal(d: ApiDeal): Deal {

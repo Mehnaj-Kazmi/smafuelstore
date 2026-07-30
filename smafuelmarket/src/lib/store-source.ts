@@ -3,7 +3,7 @@ import { stores as seedStores, type StoreLocation } from "./store-location";
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 
 type ApiStore = {
-  id: string;
+  id: number;
   name: string;
   address: string;
   city: string;

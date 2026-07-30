@@ -38,7 +38,7 @@ export class StoreLocationsService {
    * one block in the admin, so a grade removed there must disappear here, and
    * an upsert-only pass would leave it behind for ever.
    */
-  async update(id: string, dto: UpdateStoreDto) {
+  async update(id: number, dto: UpdateStoreDto) {
     const store = await this.prisma.storeLocation.findUnique({ where: { id } });
     if (!store) throw new NotFoundException(`Store ${id} not found`);
 

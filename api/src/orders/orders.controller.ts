@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseIntPipe,
   Patch,
   Post,
   Req,
@@ -17,7 +18,7 @@ import { Roles } from '../auth/roles.decorator';
 import { OrderStatus, Role } from '../../generated/prisma/client';
 
 /** The signed-in user, as attached by JwtStrategy.validate. */
-type AuthedRequest = { user: { id: string; email: string; role: Role; name: string } };
+type AuthedRequest = { user: { id: number; email: string; role: Role; name: string } };
 
 @Controller('orders')
 export class OrdersController {
@@ -55,14 +56,14 @@ export class OrdersController {
 
   @UseGuards(JwtAuthGuard)
   @Get(':id')
-  findOne(@Req() req: AuthedRequest, @Param('id') id: string) {
+  findOne(@Req() req: AuthedRequest, @Param('id', ParseIntPipe) id: number) {
     return this.orders.findOne(id, req.user.id, req.user.role);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @Patch(':id/status')
-  updateStatus(@Param('id') id: string, @Body('status') status: string) {
+  updateStatus(@Param('id', ParseIntPipe) id: number, @Body('status') status: string) {
     if (!Object.values(OrderStatus).includes(status as OrderStatus)) {
       throw new BadRequestException(
         `status must be one of: ${Object.values(OrderStatus).join(', ')}`,

@@ -7,7 +7,7 @@ import { Panel, Stat } from "@/components/admin/Ui";
 type FuelPrice = { grade: string; price: string | number };
 
 type Store = {
-  id: string;
+  id: number;
   name: string;
   address: string;
   city: string;
@@ -22,8 +22,8 @@ type Store = {
 export default function StoreAdmin() {
   const [stores, setStores] = useState<Store[] | null>(null);
   const [error, setError] = useState("");
-  const [savingId, setSavingId] = useState<string | null>(null);
-  const [savedId, setSavedId] = useState<string | null>(null);
+  const [savingId, setSavingId] = useState<number | null>(null);
+  const [savedId, setSavedId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -38,12 +38,12 @@ export default function StoreAdmin() {
     void load();
   }, [load]);
 
-  function edit(id: string, patch: Partial<Store>) {
+  function edit(id: number, patch: Partial<Store>) {
     setStores((prev) => prev?.map((s) => (s.id === id ? { ...s, ...patch } : s)) ?? null);
     setSavedId(null);
   }
 
-  function editFuel(id: string, index: number, patch: Partial<FuelPrice>) {
+  function editFuel(id: number, index: number, patch: Partial<FuelPrice>) {
     setStores(
       (prev) =>
         prev?.map((s) =>

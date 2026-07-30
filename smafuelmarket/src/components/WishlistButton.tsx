@@ -10,7 +10,7 @@ export default function WishlistButton({
   className = "",
   withLabel = false,
 }: {
-  productId: string;
+  productId: number;
   className?: string;
   withLabel?: boolean;
 }) {

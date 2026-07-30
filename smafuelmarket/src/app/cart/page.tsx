@@ -17,7 +17,7 @@ const FREE_DELIVERY_OVER = 20;
 export default function CartPage() {
   const router = useRouter();
   const { items, subtotal, savings, count, setQuantity, remove, clear, hydrated, toggleWish, hasAgeRestricted } = useCart();
-  const { canOrder, store } = useDelivery();
+  const { canOrder, store, needsLocation, outOfRange, openLocationPrompt } = useDelivery();
   const { requireAuth } = useAuthGate();
   const { products } = useCatalog();
 
@@ -146,10 +146,15 @@ export default function CartPage() {
 
         <aside className="lg:sticky lg:top-[110px] lg:self-start">
           <div className="bg-surface p-5">
-            {!canOrder ? (
+            {outOfRange ? (
               <p className="mb-3 rounded-md border border-brand-orange/35 bg-brand-orange/10 p-3 text-[13px] leading-5 text-brand-orange">
                 <strong>Checkout is unavailable.</strong> We only deliver within {store.radiusMiles} miles of{" "}
                 {store.name}. Your basket is saved if you come back inside the area.
+              </p>
+            ) : needsLocation ? (
+              <p className="mb-3 rounded-md border border-brand-orange/35 bg-brand-orange/10 p-3 text-[13px] leading-5 text-brand-orange">
+                <strong>Set your delivery location.</strong> We deliver within {store.radiusMiles} miles of{" "}
+                {store.city}, so we need to know where you are before checking out.
               </p>
             ) : remaining > 0 ? (
               <p className="mb-3 text-[13px] leading-5">
@@ -174,16 +179,26 @@ export default function CartPage() {
             <button
               type="button"
               onClick={() => {
+                /* An unset location is asked for here rather than blocking, so
+                   the basket is not a dead end. */
+                if (needsLocation) {
+                  openLocationPrompt();
+                  return;
+                }
                 /* Checkout needs an account for the order to belong to, so a
                    signed-out basket is routed through sign in and returned
                    straight to /checkout rather than to the cart. */
                 if (!requireAuth("checkout", "/checkout")) return;
                 router.push("/checkout");
               }}
-              disabled={!canOrder}
+              disabled={outOfRange}
               className="btn-pill btn-buy mt-4 w-full font-medium disabled:cursor-not-allowed disabled:opacity-45"
             >
-              {canOrder ? "Proceed to checkout" : "Delivery unavailable"}
+              {outOfRange
+                ? "Delivery unavailable"
+                : needsLocation
+                  ? "Set delivery location"
+                  : "Proceed to checkout"}
             </button>
           </div>
         </aside>

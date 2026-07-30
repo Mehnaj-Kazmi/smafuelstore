@@ -1,8 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { getToken } from "@/lib/api";
+import { useEffect, useRef, useState } from "react";
+import { api, getToken } from "@/lib/api";
 import { imageSrc } from "@/components/ProductImage";
+
+type LibraryImage = { url: string; size: number; modified: string };
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -42,6 +44,18 @@ export default function ImageUploadField({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
+  const [browsing, setBrowsing] = useState(false);
+  const [library, setLibrary] = useState<LibraryImage[] | null>(null);
+
+  /* Loaded only when the picker is opened — most edits upload a new photo and
+     never need the list, and it grows with every upload the shop has ever made. */
+  useEffect(() => {
+    if (!browsing || library) return;
+    api
+      .get<LibraryImage[]>("/uploads/library")
+      .then(setLibrary)
+      .catch(() => setLibrary([]));
+  }, [browsing, library]);
 
   async function upload(file: File) {
     setError("");
@@ -123,17 +137,64 @@ export default function ImageUploadField({
           {note && !busy && <p className="mt-1 text-[11px] leading-4 text-ink-faint">{note}</p>}
           {error && <p className="mt-1 text-[12px] font-semibold text-sma-deal">{error}</p>}
 
-          {value && !busy && (
+          <div className="mt-1 flex flex-wrap items-center gap-3">
             <button
               type="button"
-              onClick={() => onChange("")}
-              className="link-draw mt-1 text-[12px] font-bold text-ink-faint hover:text-white"
+              onClick={() => setBrowsing((b) => !b)}
+              className="link-draw text-[12px] font-bold text-brand-green"
             >
-              Remove photo
+              {browsing ? "Hide uploaded photos" : "Choose from uploaded photos"}
             </button>
-          )}
+
+            {value && !busy && (
+              <button
+                type="button"
+                onClick={() => onChange("")}
+                className="link-draw text-[12px] font-bold text-ink-faint hover:text-white"
+              >
+                Remove photo
+              </button>
+            )}
+          </div>
         </div>
       </div>
+
+      {browsing && (
+        <div className="mt-3 rounded-xl border border-line bg-surface-2 p-3">
+          {library === null ? (
+            <p className="text-[12px] text-ink-faint">Loading photos…</p>
+          ) : library.length === 0 ? (
+            <p className="text-[12px] text-ink-faint">Nothing has been uploaded yet.</p>
+          ) : (
+            <>
+              <p className="mb-2 text-[11px] text-ink-faint">
+                {library.length} photo{library.length === 1 ? "" : "s"} already uploaded — click one to use it.
+              </p>
+              <div className="grid max-h-64 grid-cols-4 gap-2 overflow-y-auto sm:grid-cols-6">
+                {library.map((img) => (
+                  <button
+                    key={img.url}
+                    type="button"
+                    onClick={() => {
+                      onChange(img.url);
+                      setBrowsing(false);
+                      setError("");
+                      setNote("");
+                    }}
+                    title={img.url.replace("/uploads/", "")}
+                    className={`grid aspect-square place-items-center overflow-hidden rounded-lg border bg-surface-3 transition hover:border-brand-green ${
+                      value === img.url ? "border-brand-green" : "border-line"
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- local upload thumbnail */}
+                    <img src={imageSrc(img.url)} alt="" className="h-full w-full object-contain" />
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

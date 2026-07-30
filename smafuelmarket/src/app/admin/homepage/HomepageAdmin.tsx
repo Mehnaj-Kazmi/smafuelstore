@@ -7,7 +7,7 @@ import ImageUploadField from "@/components/admin/ImageUploadField";
 import { imageSrc } from "@/components/ProductImage";
 
 type HeroSlide = {
-  id: string;
+  id: number;
   sortOrder: number;
   eyebrow: string;
   title: string;
@@ -41,7 +41,7 @@ type Department = {
 };
 
 type ShowcaseCard = {
-  id: string;
+  id: number;
   sortOrder: number;
   title: string;
   linkLabel: string;
@@ -56,8 +56,10 @@ export default function HomepageAdmin() {
   const [cards, setCards] = useState<ShowcaseCard[] | null>(null);
   const [departments, setDepartments] = useState<Department[] | null>(null);
   const [error, setError] = useState("");
-  const [savingId, setSavingId] = useState<string | null>(null);
-  const [savedId, setSavedId] = useState<string | null>(null);
+  /* Slides and cards are keyed by numeric id, departments by their slug, and
+     one pair of "saving/saved" markers covers all three panels. */
+  const [savingId, setSavingId] = useState<number | string | null>(null);
+  const [savedId, setSavedId] = useState<number | string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -80,17 +82,17 @@ export default function HomepageAdmin() {
   }, [load]);
 
   /** Local edit — nothing is sent until Save is pressed for that block. */
-  function editSlide(id: string, patch: Partial<HeroSlide>) {
+  function editSlide(id: number, patch: Partial<HeroSlide>) {
     setSlides((prev) => prev?.map((s) => (s.id === id ? { ...s, ...patch } : s)) ?? null);
     setSavedId(null);
   }
 
-  function editCard(id: string, patch: Partial<ShowcaseCard>) {
+  function editCard(id: number, patch: Partial<ShowcaseCard>) {
     setCards((prev) => prev?.map((c) => (c.id === id ? { ...c, ...patch } : c)) ?? null);
     setSavedId(null);
   }
 
-  function editTile(cardId: string, index: number, patch: Partial<ShowcaseTile>) {
+  function editTile(cardId: number, index: number, patch: Partial<ShowcaseTile>) {
     setCards(
       (prev) =>
         prev?.map((c) =>

@@ -70,7 +70,7 @@ export function revenueSeries(stats: OrderStats | null, days: number): DaySeries
 
 /** Best sellers by units, across every order. */
 export function bestSellers(stats: OrderStats | null, limit = 8) {
-  const tally = new Map<string, { id: string; title: string; units: number; revenue: number }>();
+  const tally = new Map<number, { id: number; title: string; units: number; revenue: number }>();
 
   for (const order of stats?.orders ?? []) {
     for (const item of order.items) {

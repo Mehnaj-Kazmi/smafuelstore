@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import AdminGuard from "./AdminGuard";
+import { getPrimaryStore } from "@/lib/store-source";
 
 export const metadata: Metadata = {
   title: { default: "Admin", template: "%s | SMA Admin" },
@@ -19,7 +20,11 @@ const nav = [
   { label: "Reports", href: "/admin/reports" },
 ];
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  /* Read from the store record rather than hardcoded, so renaming or moving the
+     shop in Admin → Store is reflected here instead of leaving a stale city. */
+  const store = await getPrimaryStore();
+
   return (
     <AdminGuard>
       <div className="mx-auto max-w-[1500px] px-3 py-4">
@@ -27,7 +32,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h1 className="text-xl font-extrabold">Store admin</h1>
-              <p className="text-xs text-ink-faint">SMA Fuel &amp; Market — Riverside</p>
+              <p className="text-xs text-ink-faint">{store.name}</p>
             </div>
             <Link
               href="/"

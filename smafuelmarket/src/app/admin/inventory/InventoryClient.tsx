@@ -11,6 +11,8 @@ import { orderStats, type OrderStats } from "@/lib/orders-api";
 export default function InventoryClient() {
   const { products } = useCatalog();
   const [stats, setStats] = useState<OrderStats | null>(null);
+  const [query, setQuery] = useState("");
+  const [only, setOnly] = useState<"all" | "low" | "out" | "ok">("all");
 
   useEffect(() => {
     (async () => {
@@ -25,14 +27,14 @@ export default function InventoryClient() {
   /* Units actually sold per product over the last 30 days, from real orders. */
   const soldPerDay = useMemo(() => {
     const cutoff = Date.now() - 30 * 86_400_000;
-    const tally = new Map<string, number>();
+    const tally = new Map<number, number>();
     for (const o of stats?.orders ?? []) {
       if (new Date(o.placedAt).getTime() < cutoff) continue;
       for (const i of o.items) {
         tally.set(i.product.id, (tally.get(i.product.id) ?? 0) + i.quantity);
       }
     }
-    return (id: string) => Math.round(((tally.get(id) ?? 0) / 30) * 10) / 10;
+    return (id: number) => Math.round(((tally.get(id) ?? 0) / 30) * 10) / 10;
   }, [stats]);
 
   const inv = useMemo(() => {
@@ -42,6 +44,21 @@ export default function InventoryClient() {
     const value = products.reduce((n, p) => n + p.price * p.stock, 0);
     return { out, low, ok, value };
   }, [products]);
+
+  /* Same multi-field match as the catalogue search: stock is looked up by
+     whatever is printed on the shelf label or the packet. */
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return products.filter((p) => {
+      const state = stockState(p);
+      if (only === "low" && state !== "low") return false;
+      if (only === "out" && state !== "out") return false;
+      if (only === "ok" && state !== "ok") return false;
+      if (!q) return true;
+      const hay = `${p.title} ${p.brand} ${p.sku} ${p.barcode} ${p.department} ${p.unit}`.toLowerCase();
+      return q.split(/\s+/).every((t) => hay.includes(t));
+    });
+  }, [products, query, only]);
 
   const maxStock = Math.max(...products.map((p) => p.stock), 1);
   const needsAttention = [...inv.out, ...inv.low];
@@ -74,9 +91,51 @@ export default function InventoryClient() {
         </Panel>
       )}
 
-      <Panel title="All inventory">
+      <Panel
+        title="All inventory"
+        action={
+          <span className="flex flex-wrap items-center gap-2">
+            <label className="sr-only" htmlFor="inv-search">Search inventory</label>
+            <input
+              id="inv-search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search name, SKU, barcode…"
+              className="w-[min(60vw,240px)] rounded-lg border border-line bg-surface-2 px-3 py-1.5 text-[13px] text-white outline-none transition-colors placeholder:text-ink-faint focus:border-brand-green"
+            />
+            <label className="sr-only" htmlFor="inv-level">Filter by stock level</label>
+            <select
+              id="inv-level"
+              value={only}
+              onChange={(e) => setOnly(e.target.value as typeof only)}
+              className="rounded-lg border border-line bg-surface-2 px-3 py-1.5 text-[13px] text-white outline-none focus:border-brand-green"
+            >
+              <option value="all">All stock levels</option>
+              <option value="out">Out of stock</option>
+              <option value="low">Low stock</option>
+              <option value="ok">Healthy</option>
+            </select>
+            {(query || only !== "all") && (
+              <button
+                type="button"
+                onClick={() => { setQuery(""); setOnly("all"); }}
+                className="text-[12px] font-bold text-ink-faint hover:text-white"
+              >
+                Clear
+              </button>
+            )}
+          </span>
+        }
+      >
+        {shown.length === 0 ? (
+          <p className="py-6 text-[13px] text-ink-faint">
+            Nothing matches. {products.length} products in the catalogue.
+          </p>
+        ) : (
+        <>
+        <p className="mb-3 text-[12px] text-ink-faint">Showing {shown.length} of {products.length} products</p>
         <Table head={["Product", "SKU", "Barcode", "On hand", "Level", "Status"]}>
-          {products.map((p) => {
+          {shown.map((p) => {
             const state = stockState(p);
             return (
               <tr key={p.id}>
@@ -97,6 +156,8 @@ export default function InventoryClient() {
             );
           })}
         </Table>
+        </>
+        )}
       </Panel>
     </div>
   );

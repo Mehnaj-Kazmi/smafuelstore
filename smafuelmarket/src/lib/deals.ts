@@ -3,11 +3,11 @@ import { products, type Product } from "./catalog";
 export type DealKind = "flash" | "percent" | "bogo" | "weekend";
 
 export type Deal = {
-  id: string;
+  id: number;
   kind: DealKind;
   title: string;
   detail: string;
-  productIds: string[];
+  productIds: number[];
   /** Percentage off, for `percent`, `flash` and `weekend` deals. */
   percentOff?: number;
   /** Hours from the session start that a flash deal runs for. */
@@ -32,50 +32,50 @@ export const dealKindClass: Record<DealKind, string> = {
 
 export const deals: Deal[] = [
   {
-    id: "deal-flash-coffee",
+    id: 1,
     kind: "flash",
     title: "Coffee & donut for $3",
     detail: "Any large fresh brew with a glazed donut. Today only, while stocks last.",
-    productIds: ["gs-1004", "gs-1011"],
+    productIds: [1004, 1011],
     endsInHours: 6,
   },
   {
-    id: "deal-bogo-hotdog",
+    id: 2,
     kind: "bogo",
     title: "2 roller grill hot dogs for $5",
     detail: "Mix and match any two hot dogs from the roller grill.",
-    productIds: ["gs-1013"],
+    productIds: [1013],
   },
   {
-    id: "deal-percent-energy",
+    id: 3,
     kind: "percent",
     title: "20% off all energy drinks",
     detail: "Every energy can in the cooler, no limit.",
-    productIds: ["gs-1002"],
+    productIds: [1002],
     percentOff: 20,
   },
   {
-    id: "deal-weekend-snacks",
+    id: 4,
     kind: "weekend",
     title: "Weekend snack bundle — 25% off",
     detail: "Chips, jerky and nuts. Friday through Sunday.",
-    productIds: ["gs-1006", "gs-1008", "gs-1009"],
+    productIds: [1006, 1008, 1009],
     percentOff: 25,
   },
   {
-    id: "deal-flash-oil",
+    id: 5,
     kind: "flash",
     title: "$7 off full synthetic oil",
     detail: "5 quart jug of MotorMax 5W-30. Ends tonight.",
-    productIds: ["gs-1020"],
+    productIds: [1020],
     endsInHours: 10,
   },
   {
-    id: "deal-percent-household",
+    id: 6,
     kind: "percent",
     title: "Household savings",
     detail: "Paper towels and frozen treats marked down this week.",
-    productIds: ["gs-1026", "gs-1019"],
+    productIds: [1026, 1019],
     percentOff: 20,
   },
 ];
@@ -92,7 +92,7 @@ export function dealProducts(source: Product[] = products, dealList: Deal[] = de
     });
 }
 
-export function dealsForProduct(id: string, dealList: Deal[] = deals): Deal[] {
+export function dealsForProduct(id: number, dealList: Deal[] = deals): Deal[] {
   return dealList.filter((d) => d.productIds.includes(id));
 }
 

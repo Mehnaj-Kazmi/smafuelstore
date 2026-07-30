@@ -31,17 +31,17 @@ export class HomeService {
     });
   }
 
-  async updateHeroSlide(id: string, dto: UpdateHeroSlideDto) {
+  async updateHeroSlide(id: number, dto: UpdateHeroSlideDto) {
     await this.findHeroSlide(id);
     return this.prisma.heroSlide.update({ where: { id }, data: dto });
   }
 
-  async removeHeroSlide(id: string) {
+  async removeHeroSlide(id: number) {
     await this.findHeroSlide(id);
     return this.prisma.heroSlide.delete({ where: { id } });
   }
 
-  private async findHeroSlide(id: string) {
+  private async findHeroSlide(id: number) {
     const slide = await this.prisma.heroSlide.findUnique({ where: { id } });
     if (!slide) throw new NotFoundException(`Hero slide ${id} not found`);
     return slide;
@@ -62,7 +62,7 @@ export class HomeService {
     });
   }
 
-  async updateShowcaseCard(id: string, dto: UpdateShowcaseCardDto) {
+  async updateShowcaseCard(id: number, dto: UpdateShowcaseCardDto) {
     await this.findShowcaseCard(id);
     const { tiles, ...rest } = dto;
     return this.prisma.showcaseCard.update({
@@ -74,12 +74,12 @@ export class HomeService {
     });
   }
 
-  async removeShowcaseCard(id: string) {
+  async removeShowcaseCard(id: number) {
     await this.findShowcaseCard(id);
     return this.prisma.showcaseCard.delete({ where: { id } });
   }
 
-  private async findShowcaseCard(id: string) {
+  private async findShowcaseCard(id: number) {
     const card = await this.prisma.showcaseCard.findUnique({ where: { id } });
     if (!card) throw new NotFoundException(`Showcase card ${id} not found`);
     return card;

@@ -5,7 +5,7 @@ import type { OrderStatus } from "./orders";
 
 /** An order as the API returns it. */
 export type ApiOrder = {
-  id: string;
+  id: number;
   placedAt: string;
   status: string;
   subtotal: string | number;
@@ -21,13 +21,13 @@ export type ApiOrder = {
     zip: string;
     notes: string | null;
   } | null;
-  user?: { id: string; name: string; email: string; phone: string | null };
+  user?: { id: number; name: string; email: string; phone: string | null };
   items: {
-    id: string;
+    id: number;
     quantity: number;
     unitPrice: string | number;
     product: {
-      id: string;
+      id: number;
       title: string;
       unit: string;
       art: string;
@@ -38,7 +38,7 @@ export type ApiOrder = {
 };
 
 export type NewOrder = {
-  items: { productId: string; quantity: number }[];
+  items: { productId: number; quantity: number }[];
   address: { recipient: string; line1: string; city: string; zip: string; notes?: string };
   couponCode?: string;
 };
@@ -86,18 +86,18 @@ export function allOrders() {
   return api.get<ApiOrder[]>("/orders/all");
 }
 
-export function setOrderStatus(id: string, status: string) {
+export function setOrderStatus(id: number, status: string) {
   return api.patch<ApiOrder>(`/orders/${id}/status`, { status });
 }
 
 export type OrderStats = {
   orders: {
-    id: string;
+    id: number;
     placedAt: string;
     status: string;
     subtotal: string | number;
     total: string | number;
-    items: { quantity: number; unitPrice: string | number; product: { id: string; title: string; departmentSlug: string } }[];
+    items: { quantity: number; unitPrice: string | number; product: { id: number; title: string; departmentSlug: string } }[];
   }[];
   customers: number;
 };

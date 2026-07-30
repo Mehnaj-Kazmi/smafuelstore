@@ -26,5 +26,5 @@ export class CreateDealDto {
   @IsOptional() @IsBoolean() active?: boolean;
 
   /** Products covered by this promotion. */
-  @IsArray() @ArrayNotEmpty() @IsString({ each: true }) productIds: string[];
+  @IsArray() @ArrayNotEmpty() @Type(() => Number) @IsInt({ each: true }) productIds: number[];
 }

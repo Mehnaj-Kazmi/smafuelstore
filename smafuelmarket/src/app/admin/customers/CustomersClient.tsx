@@ -6,7 +6,7 @@ import { money as fmt } from "@/lib/format";
 import { allOrders, money, orderStats, type ApiOrder, type OrderStats } from "@/lib/orders-api";
 
 type Row = {
-  id: string;
+  id: number;
   name: string;
   email: string;
   orders: number;
@@ -19,6 +19,7 @@ export default function CustomersClient() {
   const [orders, setOrders] = useState<ApiOrder[] | null>(null);
   const [stats, setStats] = useState<OrderStats | null>(null);
   const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -36,7 +37,7 @@ export default function CustomersClient() {
      what people actually spent — a registered account with no orders is
      counted in the header but does not invent a row here. */
   const rows = useMemo<Row[]>(() => {
-    const tally = new Map<string, Row>();
+    const tally = new Map<number, Row>();
     for (const o of orders ?? []) {
       if (!o.user || o.status === "CANCELLED") continue;
       const row = tally.get(o.user.id) ?? {
@@ -62,6 +63,14 @@ export default function CustomersClient() {
   const repeat = rows.filter((r) => r.orders > 1).length;
   const registered = stats?.customers ?? 0;
 
+  /* Same multi-field match as the catalogue search: a customer is looked up
+     by whatever's on hand — name or email. */
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) => `${r.name} ${r.email}`.toLowerCase().includes(q));
+  }, [rows, query]);
+
   return (
     <div className="space-y-5">
       {error && <p role="alert" className="text-[13px] font-semibold text-sma-deal">{error}</p>}
@@ -81,16 +90,45 @@ export default function CustomersClient() {
         />
       </div>
 
-      <Panel title="Customers by spend">
+      <Panel
+        title="Customers by spend"
+        action={
+          rows.length > 0 ? (
+            <span className="flex flex-wrap items-center gap-2">
+              <label className="sr-only" htmlFor="customer-search">Search customers</label>
+              <input
+                id="customer-search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search name, email…"
+                className="w-[min(60vw,240px)] rounded-lg border border-line bg-surface-2 px-3 py-1.5 text-[13px] text-white outline-none transition-colors placeholder:text-ink-faint focus:border-brand-green"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  className="text-[12px] font-bold text-ink-faint hover:text-white"
+                >
+                  Clear
+                </button>
+              )}
+            </span>
+          ) : undefined
+        }
+      >
         {!orders ? (
           <p className="text-[13px] text-ink-faint">Loading…</p>
         ) : rows.length === 0 ? (
           <p className="text-[13px] text-ink-faint">
             No customer has ordered yet. Rows appear here once orders come in.
           </p>
+        ) : shown.length === 0 ? (
+          <p className="text-[13px] text-ink-faint">Nothing matches that search. {rows.length} customers total.</p>
         ) : (
+          <>
+          <p className="mb-3 text-[12px] text-ink-faint">Showing {shown.length} of {rows.length} customers</p>
           <Table head={["Customer", "First order", "Last order", "Orders", "Total spend", "Share"]}>
-            {rows.map((r) => (
+            {shown.map((r) => (
               <tr key={r.id}>
                 <td className="py-2.5 pr-4">
                   <span className="block font-semibold text-white">{r.name}</span>
@@ -104,6 +142,7 @@ export default function CustomersClient() {
               </tr>
             ))}
           </Table>
+          </>
         )}
       </Panel>
     </div>

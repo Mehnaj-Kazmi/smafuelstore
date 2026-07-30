@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseIntPipe,
   Patch,
   Post,
   Query,
@@ -48,14 +49,14 @@ export class HomeController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @Patch('hero-slides/:id')
-  updateHeroSlide(@Param('id') id: string, @Body() dto: UpdateHeroSlideDto) {
+  updateHeroSlide(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateHeroSlideDto) {
     return this.home.updateHeroSlide(id, dto);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @Delete('hero-slides/:id')
-  removeHeroSlide(@Param('id') id: string) {
+  removeHeroSlide(@Param('id', ParseIntPipe) id: number) {
     return this.home.removeHeroSlide(id);
   }
 
@@ -69,14 +70,14 @@ export class HomeController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @Patch('showcase-cards/:id')
-  updateShowcaseCard(@Param('id') id: string, @Body() dto: UpdateShowcaseCardDto) {
+  updateShowcaseCard(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateShowcaseCardDto) {
     return this.home.updateShowcaseCard(id, dto);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @Delete('showcase-cards/:id')
-  removeShowcaseCard(@Param('id') id: string) {
+  removeShowcaseCard(@Param('id', ParseIntPipe) id: number) {
     return this.home.removeShowcaseCard(id);
   }
 }

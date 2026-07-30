@@ -19,14 +19,14 @@ export default function AddToCartButton({
   label = "Add to cart",
   block = false,
 }: {
-  productId: string;
+  productId: number;
   quantity?: number;
   className?: string;
   label?: string;
   block?: boolean;
 }) {
   const { add, items, setQuantity, remove } = useCart();
-  const { canOrder, ready } = useDelivery();
+  const { canOrder, ready, needsLocation, outOfRange, openLocationPrompt } = useDelivery();
   const { requireAuth } = useAuthGate();
   const { getProduct } = useCatalog();
   const { notify } = useToast();
@@ -38,13 +38,26 @@ export default function AddToCartButton({
   const product = getProduct(productId);
   const soldOut = !product || product.stock <= 0;
 
-  /* Out of stock and out of area are hard stops. Being signed out is not — the
-     button stays live and routes to sign in, so the visitor learns what is
-     needed by clicking rather than by finding a disabled control. */
-  const disabled = soldOut || !canOrder;
+  /* Out of stock and a verified out-of-area are hard stops. Being signed out or
+     not having given a location are not — the button stays live and asks for
+     what is missing, so the visitor learns by clicking rather than by finding a
+     dead control. */
+  const disabled = soldOut || outOfRange;
 
   function handleClick() {
     if (disabled) return;
+
+    /* Nothing enters the basket until we know we can deliver it. */
+    if (needsLocation) {
+      openLocationPrompt();
+      notify({
+        message: "Where are we delivering?",
+        detail: "Set your location and we'll check you're in our delivery area.",
+        tone: "default",
+      });
+      return;
+    }
+
     if (!requireAuth("cart")) return;
 
     /* Captured before the change so Undo restores the exact previous quantity
@@ -71,18 +84,28 @@ export default function AddToCartButton({
     ? "Out of stock"
     : !ready
       ? label
-      : !canOrder
+      : outOfRange
         ? "Outside delivery area"
-        : added
-          ? "Added ✓"
-          : label;
+        : needsLocation
+          ? "Set delivery location"
+          : added
+            ? "Added ✓"
+            : label;
 
   return (
     <button
       type="button"
       onClick={handleClick}
       disabled={disabled}
-      title={!canOrder && !soldOut ? "Ordering is only available inside our delivery area" : undefined}
+      title={
+        soldOut
+          ? undefined
+          : outOfRange
+            ? "Ordering is only available inside our delivery area"
+            : needsLocation
+              ? "Set your delivery location to start adding items"
+              : undefined
+      }
       className={`btn-pill btn-cart font-medium disabled:cursor-not-allowed disabled:opacity-45 ${
         block ? "w-full" : ""
       } ${className}`}
