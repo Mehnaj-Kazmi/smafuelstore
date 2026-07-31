@@ -1,5 +1,6 @@
 import { BadRequestException, Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import { THROTTLE } from '../throttle.config';
 import { ReviewsService } from './reviews.service';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -36,7 +37,7 @@ export class ReviewsController {
    * product in a loop. Someone reconsidering a handful of opinions stays well
    * under this; a script writing the whole shelf does not.
    */
-  @Throttle({ default: { ttl: 3_600_000, limit: 15 } })
+  @Throttle({ default: THROTTLE.reviewWrite })
   @UseGuards(JwtAuthGuard)
   @Post()
   upsert(@Req() req: AuthedRequest, @Body() dto: CreateReviewDto) {

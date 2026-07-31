@@ -7,7 +7,7 @@ import { useCart } from "@/lib/cart";
 import { useDelivery } from "@/lib/delivery";
 import { useAuth } from "@/lib/auth";
 import { money } from "@/lib/format";
-import { checkCoupon, placeOrder as submitOrder } from "@/lib/orders-api";
+import { checkCoupon, placeOrder as submitOrder, quoteOrder, type OrderQuote } from "@/lib/orders-api";
 import ProductImage from "@/components/ProductImage";
 import SmaLogo from "@/components/SmaLogo";
 
@@ -43,11 +43,39 @@ export default function CheckoutPage() {
   const [placing, setPlacing] = useState(false);
   const [placeError, setPlaceError] = useState("");
 
-  const discount = coupon?.discount ?? 0;
-  const discounted = Math.max(0, subtotal - discount);
-  const deliveryFee = discounted >= FREE_DELIVERY_OVER ? 0 : DELIVERY_FEE;
-  const tax = discounted * TAX_RATE;
-  const total = discounted + deliveryFee + tax;
+  /*
+   * Totals come from the API.
+   *
+   * They used to be worked out here as well as on the server, and the two had
+   * already diverged — this page tested free delivery against the discounted
+   * amount while the server tested it against the subtotal — so the summary
+   * could promise a total the order did not charge. The browser also cannot
+   * know which promotions are running or whether this customer may still use a
+   * code. Asking removes both problems and the duplication with them.
+   */
+  const [quote, setQuote] = useState<OrderQuote | null>(null);
+
+  useEffect(() => {
+    if (!hydrated || items.length === 0) return;
+    let cancelled = false;
+    quoteOrder(
+      items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+      coupon?.coupon.code,
+    )
+      .then((q) => !cancelled && setQuote(q))
+      .catch(() => !cancelled && setQuote(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrated, items, coupon]);
+
+  /* Falls back to the plain subtotal until the quote lands, so the page never
+     shows a total that is lower than what will actually be charged. */
+  const dealDiscount = quote?.dealDiscount ?? 0;
+  const discount = quote?.discount ?? 0;
+  const deliveryFee = quote?.deliveryFee ?? (subtotal >= FREE_DELIVERY_OVER ? 0 : DELIVERY_FEE);
+  const tax = quote?.tax ?? 0;
+  const total = quote?.total ?? subtotal + deliveryFee;
 
   if (!hydrated || !authReady || !user) {
     return <div className="mx-auto max-w-[1100px] px-4 py-10 text-sm text-ink-faint">Loading checkout…</div>;
@@ -309,6 +337,14 @@ export default function CheckoutPage() {
             <h2 className="mb-2 text-lg font-bold">Order summary</h2>
             <dl className="space-y-1 text-[13px]">
               <Row label={`Items (${count})`} value={money(subtotal)} />
+              {/* Named individually so the customer can see which promotion
+                  gave them what, rather than one unexplained deduction. */}
+              {quote?.deals.map((d, i) => (
+                <Row key={`${d.productId}-${i}`} label={d.dealTitle} value={`−${money(d.saving)}`} tone="good" />
+              ))}
+              {dealDiscount > 0 && quote?.deals.length === 0 && (
+                <Row label="Promotions" value={`−${money(dealDiscount)}`} tone="good" />
+              )}
               {discount > 0 && <Row label="Coupon discount" value={`−${money(discount)}`} tone="good" />}
               <Row label="Delivery" value={deliveryFee === 0 ? "FREE" : money(deliveryFee)} />
               <Row label="Estimated tax (8%)" value={money(tax)} />

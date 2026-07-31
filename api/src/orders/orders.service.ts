@@ -2,7 +2,9 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { OrderStatus, Role } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { QuoteOrderDto } from './dto/quote-order.dto';
 import { findCoupon, priceOrder } from './pricing';
+import { priceDeals, type PricingDeal, type PricingLine } from './deal-pricing';
 
 /** Everything a storefront or admin view needs about an order, in one query. */
 const withDetail = {
@@ -30,8 +32,25 @@ export class OrdersService {
    * order is not written and no stock is taken. Otherwise a customer could end
    * up with a half-fulfilled order and the shop with wrong inventory.
    */
-  async create(userId: number, dto: CreateOrderDto) {
-    const ids = dto.items.map((i) => i.productId);
+  /**
+   * Prices a basket: what it costs, what the shop's promotions took off, and
+   * what a coupon adds to that.
+   *
+   * Shared by `quote` and `create` on purpose. Checkout used to compute its own
+   * totals in the browser, and the two copies had already drifted — the page
+   * judged free delivery on the discounted amount while the server judged it on
+   * the subtotal, so the figure shown and the figure charged could differ. One
+   * implementation, used by the page that displays it and the endpoint that
+   * bills it, cannot disagree with itself.
+   */
+  private async priceBasket(
+    userId: number,
+    items: { productId: number; quantity: number }[],
+    couponCode?: string | null,
+    /** Order placement rejects a short basket; a quote only reports it. */
+    enforceStock = true,
+  ) {
+    const ids = items.map((i) => i.productId);
     const products = await this.prisma.product.findMany({ where: { id: { in: ids } } });
 
     if (products.length !== new Set(ids).size) {
@@ -40,22 +59,51 @@ export class OrdersService {
 
     const byId = new Map(products.map((p) => [p.id, p]));
 
-    for (const line of dto.items) {
+    for (const line of items) {
       const product = byId.get(line.productId);
       if (!product) throw new BadRequestException('Unknown product in basket');
-      if (product.stock < line.quantity) {
-        throw new BadRequestException(
-          `${product.title} only has ${product.stock} left`,
-        );
+      if (enforceStock && product.stock < line.quantity) {
+        throw new BadRequestException(`${product.title} only has ${product.stock} left`);
       }
     }
 
-    const subtotal = dto.items.reduce((sum, line) => {
+    const subtotal = items.reduce((sum, line) => {
       const product = byId.get(line.productId)!;
       return sum + Number(product.price) * line.quantity;
     }, 0);
 
-    const totals = priceOrder(subtotal, dto.couponCode, await this.mayRedeem(userId, dto.couponCode));
+    /* Promotions are applied to the basket without the customer asking, which
+       is the whole point of advertising them on the shelf. */
+    const lines: PricingLine[] = items.map((line) => ({
+      productId: line.productId,
+      quantity: line.quantity,
+      unitPrice: Number(byId.get(line.productId)!.price),
+    }));
+    const dealBreakdown = priceDeals(lines, await this.activeDealsFor(ids));
+
+    const totals = priceOrder(
+      subtotal,
+      couponCode,
+      await this.mayRedeem(userId, couponCode),
+      dealBreakdown.total,
+    );
+
+    return { byId, totals, dealBreakdown };
+  }
+
+  /** Prices a basket without placing it, so checkout shows what will be charged. */
+  async quote(userId: number, dto: QuoteOrderDto) {
+    const { totals, dealBreakdown } = await this.priceBasket(
+      userId,
+      dto.items,
+      dto.couponCode,
+      false,
+    );
+    return { ...totals, deals: dealBreakdown.lines };
+  }
+
+  async create(userId: number, dto: CreateOrderDto) {
+    const { byId, totals } = await this.priceBasket(userId, dto.items, dto.couponCode);
 
     return this.prisma.$transaction(async (tx) => {
       const address = await tx.address.create({
@@ -75,6 +123,7 @@ export class OrdersService {
           userId,
           addressId: address.id,
           subtotal: totals.subtotal,
+          dealDiscount: totals.dealDiscount,
           discount: totals.discount,
           deliveryFee: totals.deliveryFee,
           tax: totals.tax,
@@ -121,6 +170,30 @@ export class OrdersService {
 
       return order;
     });
+  }
+
+  /**
+   * The live promotions covering any of these products.
+   *
+   * Only `active` decides whether a promotion is running. `endsInHours` drives
+   * the countdown badge on the storefront, but the admin panel ends a deal with
+   * its End button, which clears `active` — treating the countdown as
+   * authoritative here would silently stop honouring a deal the shop still
+   * shows as live, which is the mismatch this whole change exists to remove.
+   */
+  private async activeDealsFor(productIds: number[]): Promise<PricingDeal[]> {
+    const deals = await this.prisma.deal.findMany({
+      where: { active: true, products: { some: { id: { in: productIds } } } },
+      include: { products: { select: { id: true } } },
+    });
+
+    return deals.map((d) => ({
+      id: d.id,
+      kind: d.kind,
+      title: d.title,
+      percentOff: d.percentOff,
+      productIds: d.products.map((p) => p.id),
+    }));
   }
 
   /**

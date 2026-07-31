@@ -13,6 +13,7 @@ import {
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { CheckCouponDto } from './dto/check-coupon.dto';
+import { QuoteOrderDto } from './dto/quote-order.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -38,6 +39,18 @@ export class OrdersController {
   @Get('mine')
   findMine(@Req() req: AuthedRequest) {
     return this.orders.findMine(req.user.id);
+  }
+
+  /**
+   * What this basket would cost, without placing it.
+   *
+   * Checkout shows these figures rather than working them out again, so the
+   * summary and the receipt are produced by the same code.
+   */
+  @UseGuards(JwtAuthGuard)
+  @Post('quote')
+  quote(@Req() req: AuthedRequest, @Body() dto: QuoteOrderDto) {
+    return this.orders.quote(req.user.id, dto);
   }
 
   /* Declared before ':id' so "check-coupon" is not read as an order id. */

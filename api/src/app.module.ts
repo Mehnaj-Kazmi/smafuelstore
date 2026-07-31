@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { THROTTLE } from './throttle.config';
 import { PrismaModule } from './prisma/prisma.module';
 import { MailModule } from './mail/mail.module';
 import { AuthModule } from './auth/auth.module';
@@ -27,7 +28,7 @@ import { ReviewsModule } from './reviews/reviews.module';
      * @Throttle, since 120/min is generous for browsing but far too kind for a
      * login form.
      */
-    ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 120 }]),
+    ThrottlerModule.forRoot([{ name: 'default', ...THROTTLE.default }]),
     PrismaModule,
     MailModule,
     AuthModule,

@@ -51,6 +51,9 @@ export function findCoupon(code?: string | null): Coupon | undefined {
 
 export type Totals = {
   subtotal: number;
+  /** Taken off automatically by the shop's promotions. */
+  dealDiscount: number;
+  /** Taken off by a coupon code the customer entered. */
   discount: number;
   deliveryFee: number;
   tax: number;
@@ -81,8 +84,20 @@ export function priceOrder(
    * any display-only use keep working; the order path always passes it.
    */
   redeemable = true,
+  /**
+   * What the shop's own promotions already took off, from priceDeals. These
+   * apply automatically — the customer opts into nothing — so they come off
+   * before a coupon is considered.
+   */
+  dealDiscountRaw = 0,
 ): Totals {
   const subtotal = money(subtotalRaw);
+  const dealDiscount = money(Math.min(Math.max(0, dealDiscountRaw), subtotal));
+
+  /* What is left after automatic promotions, and the base a coupon works on.
+     Taking a coupon percentage off the full subtotal instead would discount the
+     part the shop has already given away, paying the customer twice for it. */
+  const afterDeals = money(subtotal - dealDiscount);
 
   const coupon = findCoupon(couponCode);
 
@@ -91,17 +106,18 @@ export function priceOrder(
   let discount = 0;
   if (usable && coupon) {
     discount = coupon.percentOff
-      ? (subtotal * coupon.percentOff) / 100
-      : Math.min(coupon.amountOff ?? 0, subtotal);
+      ? (afterDeals * coupon.percentOff) / 100
+      : Math.min(coupon.amountOff ?? 0, afterDeals);
   }
   discount = money(discount);
 
-  const discounted = Math.max(0, money(subtotal - discount));
+  const discounted = Math.max(0, money(afterDeals - discount));
   const deliveryFee = subtotal >= FREE_DELIVERY_OVER ? 0 : DELIVERY_FEE;
   const tax = money(discounted * TAX_RATE);
   const total = money(discounted + deliveryFee + tax);
 
   return {
+    dealDiscount,
     subtotal,
     discount,
     deliveryFee,

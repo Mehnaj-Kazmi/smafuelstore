@@ -119,3 +119,25 @@ export type CouponCheck =
 export function checkCoupon(code: string, subtotal: number) {
   return api.post<CouponCheck>("/orders/check-coupon", { code, subtotal });
 }
+
+/**
+ * What a basket costs, priced by the API.
+ *
+ * Checkout shows these rather than recomputing them, because the browser cannot
+ * know which promotions are live or whether this customer may still redeem a
+ * code — and a summary worked out separately from the bill drifts from it.
+ */
+export type OrderQuote = {
+  subtotal: number;
+  dealDiscount: number;
+  discount: number;
+  deliveryFee: number;
+  tax: number;
+  total: number;
+  couponCode: string | null;
+  deals: { productId: number; dealTitle: string; saving: number }[];
+};
+
+export function quoteOrder(items: { productId: number; quantity: number }[], couponCode?: string) {
+  return api.post<OrderQuote>("/orders/quote", { items, couponCode });
+}

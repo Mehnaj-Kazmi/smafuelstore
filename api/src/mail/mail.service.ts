@@ -4,6 +4,37 @@ import * as nodemailer from 'nodemailer';
 type SendResult = { delivered: boolean; previewUrl?: string };
 
 /**
+ * Fail fast rather than hang.
+ *
+ * A blocked or unreachable mail host does not refuse a connection, it simply
+ * never answers, and nodemailer's default is to wait a very long time for that.
+ * A password reset was taking twenty-one seconds to come back because every
+ * request sat waiting on a port that was never going to reply. Better to give
+ * up quickly and log why.
+ */
+const TIMEOUTS = {
+  connectionTimeout: 8_000,
+  greetingTimeout: 8_000,
+  socketTimeout: 12_000,
+} as const;
+
+/**
+ * Strips the spaces out of a Gmail App Password.
+ *
+ * Google shows the sixteen characters as four groups — `abcd efgh ijkl mnop` —
+ * and copying it naturally brings the spaces along. The server then sees a
+ * nineteen-character string and answers "Username and Password not accepted",
+ * which reads as a wrong password rather than a stray space, and sends people
+ * off regenerating a credential that was right all along.
+ *
+ * Whitespace is never meaningful in these, so removing it is safe and spares
+ * everyone that hunt.
+ */
+function appPassword(value?: string): string | undefined {
+  return value?.replace(/\s+/g, '') || undefined;
+}
+
+/**
  * Outbound email.
  *
  * Three modes, chosen from the environment rather than from a flag, so the same
@@ -24,7 +55,9 @@ type SendResult = { delivered: boolean; previewUrl?: string };
 export class MailService {
   private readonly logger = new Logger(MailService.name);
   private transporter?: nodemailer.Transporter;
-  private mode: 'smtp' | 'ethereal' | 'log' = 'log';
+  private mode: 'resend' | 'smtp' | 'ethereal' | 'log' = 'log';
+  /** Set once Ethereal proves unreachable, so it is not tried again. */
+  private etherealUnavailable = false;
 
   private get from(): string {
     return process.env.MAIL_FROM ?? 'SMA Fuel & Market <no-reply@smafuel.market>';
@@ -35,6 +68,23 @@ export class MailService {
     if (this.transporter) return this.transporter;
 
     if (process.env.SMTP_HOST) {
+      /*
+       * Half-configured is worth naming.
+       *
+       * A host and a username with no password still produces a transport, and
+       * the server answers with a bare "535 Username and Password not
+       * accepted" — which reads like the password is wrong rather than absent.
+       * Saying so here saves that hunt.
+       */
+      if (process.env.SMTP_USER && !process.env.SMTP_PASS?.trim()) {
+        this.logger.warn(
+          `SMTP_USER is set to ${process.env.SMTP_USER} but SMTP_PASS is empty, so email cannot be sent. ` +
+            'Gmail needs a 16-character App Password from https://myaccount.google.com/apppasswords ' +
+            '— the account password will not work.',
+        );
+        return null;
+      }
+
       const port = Number(process.env.SMTP_PORT ?? 587);
       this.transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
@@ -42,8 +92,9 @@ export class MailService {
         /* 465 is implicit TLS; everything else upgrades with STARTTLS. */
         secure: port === 465,
         auth: process.env.SMTP_USER
-          ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+          ? { user: process.env.SMTP_USER, pass: appPassword(process.env.SMTP_PASS) }
           : undefined,
+        ...TIMEOUTS,
       });
       this.mode = 'smtp';
       this.logger.log(`Email via SMTP at ${process.env.SMTP_HOST}:${port}`);
@@ -55,6 +106,10 @@ export class MailService {
       return null;
     }
 
+    /* Asked for once. Ethereal is reachable or it is not, and retrying a
+       blocked host on every password reset only repeats the wait. */
+    if (this.etherealUnavailable) return null;
+
     try {
       const account = await nodemailer.createTestAccount();
       this.transporter = nodemailer.createTransport({
@@ -62,19 +117,71 @@ export class MailService {
         port: account.smtp.port,
         secure: account.smtp.secure,
         auth: { user: account.user, pass: account.pass },
+        ...TIMEOUTS,
       });
       this.mode = 'ethereal';
       this.logger.log('Email via Ethereal test inbox — messages are not delivered to real addresses');
       return this.transporter;
     } catch (err) {
+      this.etherealUnavailable = true;
       this.logger.warn(
-        `Could not reach Ethereal, falling back to logging: ${err instanceof Error ? err.message : err}`,
+        `Could not reach Ethereal, falling back to logging: ${err instanceof Error ? err.message : err}. ` +
+          'Set SMTP_HOST in api/.env to send real email.',
       );
       return null;
     }
   }
 
+  /**
+   * Hands the message to Resend over HTTPS.
+   *
+   * Preferred when configured, because it sidesteps the two things that keep
+   * stopping mail from leaving: Gmail refuses account passwords over SMTP and
+   * wants a generated App Password, and mail ports are often blocked outright
+   * on office and home networks. Port 443 is not, and an API key is a single
+   * value with no second factor behind it.
+   */
+  private async sendViaResend(
+    key: string,
+    input: { to: string; subject: string; html: string; text: string },
+  ): Promise<SendResult> {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: this.from,
+        to: [input.to],
+        subject: input.subject,
+        html: input.html,
+        text: input.text,
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+
+    if (res.ok) {
+      this.logger.log(`Email sent to ${input.to} (resend)`);
+      return { delivered: true };
+    }
+
+    /* Resend explains refusals in the body — an unverified sending domain, or
+       a key that does not exist — and that detail is what makes it fixable. */
+    const detail = await res.text().catch(() => '');
+    throw new Error(`Resend returned ${res.status}: ${detail.slice(0, 300)}`);
+  }
+
   async send(input: { to: string; subject: string; html: string; text: string }): Promise<SendResult> {
+    const resendKey = process.env.RESEND_API_KEY?.trim();
+    if (resendKey) {
+      try {
+        return await this.sendViaResend(resendKey, input);
+      } catch (err) {
+        this.logger.error(
+          `Email to ${input.to} failed: ${err instanceof Error ? err.message : err}\n${input.text}`,
+        );
+        return { delivered: false };
+      }
+    }
+
     const transporter = await this.transport();
 
     if (!transporter) {
@@ -95,9 +202,21 @@ export class MailService {
     } catch (err) {
       /* Logged rather than thrown: the caller has already done the work the
          customer asked for, and a mail outage should not undo it. */
-      this.logger.error(
-        `Email to ${input.to} failed: ${err instanceof Error ? err.message : err}\n${input.text}`,
-      );
+      const reason = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Email to ${input.to} failed: ${reason}\n${input.text}`);
+
+      /* A test inbox that cannot be reached is not worth waiting on again —
+         every later send would pay the same timeout for the same answer. */
+      if (this.mode === 'ethereal') {
+        this.etherealUnavailable = true;
+        this.transporter = undefined;
+        this.mode = 'log';
+        this.logger.warn(
+          'Ethereal is unreachable from this network, so email will only be logged. ' +
+            'Set SMTP_HOST, SMTP_USER and SMTP_PASS in api/.env to send real email.',
+        );
+      }
+
       return { delivered: false };
     }
   }
