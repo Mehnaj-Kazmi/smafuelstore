@@ -88,5 +88,12 @@ export function useAuth() {
  * is configured.
  */
 export function requestPasswordReset(email: string) {
-  return api.post<{ message: string; devResetLink?: string }>("/auth/forgot-password", { email });
+  return api.post<{
+    message: string;
+    devResetLink?: string;
+    /** Whether an email really went out, and why not when it did not. */
+    devMailDelivered?: boolean;
+    devMailReason?: string;
+    devPreviewUrl?: string;
+  }>("/auth/forgot-password", { email });
 }

@@ -37,7 +37,9 @@ async function bootstrap() {
     }),
   );
 
-  app.enableCors({ origin: process.env.FRONTEND_URL ?? 'http://localhost:3000' });
+  app.enableCors({
+    origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
+  });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.setGlobalPrefix('api');
 
@@ -70,4 +72,7 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT ?? 4000);
 }
-bootstrap();
+/* `void` so the floating promise is deliberate rather than overlooked; a
+   failure to start still surfaces as an unhandled rejection and a non-zero
+   exit, which is what a process manager needs to see. */
+void bootstrap();

@@ -9,7 +9,13 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [sent, setSent] = useState<{ message: string; devResetLink?: string } | null>(null);
+  const [sent, setSent] = useState<{
+    message: string;
+    devResetLink?: string;
+    devMailDelivered?: boolean;
+    devMailReason?: string;
+    devPreviewUrl?: string;
+  } | null>(null);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -46,16 +52,32 @@ export default function ForgotPasswordPage() {
               hasn&apos;t arrived.
             </p>
 
+            {sent.devMailDelivered && (
+              /* Development only, and purely reassurance: it confirms the mail
+                 really left rather than leaving the tester wondering. Carries
+                 no link, because the inbox is the way in once one has been
+                 sent — exactly as it will be in production. */
+              <p className="mt-3 text-[12px] font-semibold leading-5 text-brand-green">
+                Email delivered — check the inbox, and the spam folder.
+              </p>
+            )}
+
             {sent.devResetLink && (
-              /* Development only: no mail service is configured, so the link the
-                 email would have carried is shown here instead. */
+              /* Development only, and only when nothing was delivered, so an
+                 unconfigured mail setup does not block work. A live reset token
+                 is not printed on screen once a real email carries it. */
               <div className="mt-4 rounded-xl border border-brand-orange/40 bg-brand-orange/10 p-3">
                 <p className="text-[11px] font-extrabold uppercase tracking-wide text-brand-orange">
                   Development only
                 </p>
                 <p className="mt-1 text-[12px] leading-5 text-ink-soft">
-                  No email service is set up yet, so use this link directly:
+                  {sent.devMailReason
+                    ? "The email could not be delivered, so use this link directly:"
+                    : "No email service is set up yet, so use this link directly:"}
                 </p>
+                {!sent.devMailDelivered && sent.devMailReason && (
+                  <p className="mt-1.5 text-[11px] leading-4 text-brand-orange">{sent.devMailReason}</p>
+                )}
                 <Link
                   href={sent.devResetLink.replace(/^https?:\/\/[^/]+/, "")}
                   className="mt-2 block break-all text-[12px] font-bold text-brand-green underline"

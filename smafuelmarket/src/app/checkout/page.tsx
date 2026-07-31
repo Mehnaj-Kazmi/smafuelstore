@@ -30,7 +30,6 @@ export default function CheckoutPage() {
   }, [authReady, user, router]);
 
   const [payment, setPayment] = useState("card");
-  const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [couponInput, setCouponInput] = useState("");
   /* Only what the summary renders — the API is the authority on the amount. */
   const [coupon, setCoupon] = useState<{
@@ -159,7 +158,6 @@ export default function CheckoutPage() {
     if (!/^\d{4,10}$/.test(address.postcode.trim())) {
       next.postcode = "Postcode must be numbers only";
     }
-    if (hasAgeRestricted && !ageConfirmed) next.age = "Confirm you are 21 or over to buy these items";
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -263,24 +261,24 @@ export default function CheckoutPage() {
           </section>
 
           {hasAgeRestricted && (
-            <section>
-              <h2 className="mb-3 border-b border-line pb-1 text-lg font-bold">
-                <span className="text-brand-green">3</span> Age verification
-              </h2>
-              <label className="flex cursor-pointer items-start gap-3 rounded-md border border-brand-orange/35 bg-brand-orange/10 p-3">
-                <input type="checkbox" checked={ageConfirmed} onChange={(e) => setAgeConfirmed(e.target.checked)} className="mt-1 accent-brand-green" />
-                <span className="text-[13px] leading-5 text-brand-orange">
-                  I confirm I am <strong>21 or over</strong> and will present photo ID on delivery. The driver will
-                  refuse handover without it and those items will be refunded.
-                </span>
-              </label>
-              {errors.age && <p className="mt-1 text-xs text-sma-deal">{errors.age}</p>}
-            </section>
+            /*
+             * Told, not asked.
+             *
+             * This used to be a tick-box that refused to let the order through
+             * until it was checked, which stopped a sale over something the tick
+             * never actually proved — anyone can tick a box. The check that
+             * matters happens at the door, where the driver sees the ID, so the
+             * customer is told what to expect and the basket is left alone.
+             */
+            <p className="rounded-md border border-brand-orange/35 bg-brand-orange/10 p-3 text-[13px] leading-5 text-brand-orange">
+              Your basket contains age-restricted items. Please have <strong>photo ID</strong> ready — the driver
+              will check it at handover, and those items are refunded if it cannot be shown.
+            </p>
           )}
 
           <section>
             <h2 className="mb-3 border-b border-line pb-1 text-lg font-bold">
-              <span className="text-brand-green">{hasAgeRestricted ? 4 : 3}</span> Review your order
+              <span className="text-brand-green">3</span> Review your order
             </h2>
             <ul className="divide-y divide-sma-border border-y border-line">
               {items.map((item) => (

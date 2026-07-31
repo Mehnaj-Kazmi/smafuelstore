@@ -17,7 +17,12 @@ export class CreateDealDto {
   @IsString() title: string;
   @IsString() detail: string;
 
-  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(99) percentOff?: number;
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(99)
+  percentOff?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) endsInHours?: number;
 
   /** Path returned by POST /api/uploads/product-image. */
@@ -26,5 +31,9 @@ export class CreateDealDto {
   @IsOptional() @IsBoolean() active?: boolean;
 
   /** Products covered by this promotion. */
-  @IsArray() @ArrayNotEmpty() @Type(() => Number) @IsInt({ each: true }) productIds: number[];
+  @IsArray()
+  @ArrayNotEmpty()
+  @Type(() => Number)
+  @IsInt({ each: true })
+  productIds: number[];
 }

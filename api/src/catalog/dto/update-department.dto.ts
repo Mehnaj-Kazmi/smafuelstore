@@ -1,5 +1,12 @@
 import { Type } from 'class-transformer';
-import { IsBoolean, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
 
 export class UpdateDepartmentDto {
   @IsOptional() @IsString() name?: string;

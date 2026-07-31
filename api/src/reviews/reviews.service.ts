@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { Role } from '../../generated/prisma/client';
@@ -15,11 +20,25 @@ export class ReviewsService {
         include: { user: { select: { name: true } } },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.review.groupBy({ by: ['rating'], where: { productId }, _count: { _all: true } }),
-      this.prisma.review.aggregate({ where: { productId }, _avg: { rating: true }, _count: { _all: true } }),
+      this.prisma.review.groupBy({
+        by: ['rating'],
+        where: { productId },
+        _count: { _all: true },
+      }),
+      this.prisma.review.aggregate({
+        where: { productId },
+        _avg: { rating: true },
+        _count: { _all: true },
+      }),
     ]);
 
-    const breakdown: Record<string, number> = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 };
+    const breakdown: Record<string, number> = {
+      '1': 0,
+      '2': 0,
+      '3': 0,
+      '4': 0,
+      '5': 0,
+    };
     for (const g of grouped) breakdown[String(g.rating)] = g._count._all;
 
     return {
@@ -45,7 +64,9 @@ export class ReviewsService {
    * "this is now what I think," not a second stacked entry.
    */
   async upsert(userId: number, dto: CreateReviewDto) {
-    const product = await this.prisma.product.findUnique({ where: { id: dto.productId } });
+    const product = await this.prisma.product.findUnique({
+      where: { id: dto.productId },
+    });
     if (!product) throw new BadRequestException('Unknown product');
 
     /*
@@ -54,13 +75,21 @@ export class ReviewsService {
      * would be worse than not having one.
      */
     const purchase = await this.prisma.orderItem.findFirst({
-      where: { productId: dto.productId, order: { userId, status: { not: 'CANCELLED' } } },
+      where: {
+        productId: dto.productId,
+        order: { userId, status: { not: 'CANCELLED' } },
+      },
     });
 
     return this.prisma.$transaction(async (tx) => {
       const review = await tx.review.upsert({
         where: { productId_userId: { productId: dto.productId, userId } },
-        update: { rating: dto.rating, title: dto.title, body: dto.body, verifiedPurchase: Boolean(purchase) },
+        update: {
+          rating: dto.rating,
+          title: dto.title,
+          body: dto.body,
+          verifiedPurchase: Boolean(purchase),
+        },
         create: {
           productId: dto.productId,
           userId,

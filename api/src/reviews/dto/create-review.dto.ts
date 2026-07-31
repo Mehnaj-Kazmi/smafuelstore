@@ -1,5 +1,13 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, Min, MaxLength, MinLength } from 'class-validator';
+import {
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class CreateReviewDto {
   @Type(() => Number) @IsInt() productId: number;

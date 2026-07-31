@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { OrderStatus, Role } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -10,7 +14,16 @@ import { priceDeals, type PricingDeal, type PricingLine } from './deal-pricing';
 const withDetail = {
   items: {
     include: {
-      product: { select: { id: true, title: true, unit: true, art: true, hue: true, imageUrl: true } },
+      product: {
+        select: {
+          id: true,
+          title: true,
+          unit: true,
+          art: true,
+          hue: true,
+          imageUrl: true,
+        },
+      },
     },
   },
   address: true,
@@ -51,10 +64,14 @@ export class OrdersService {
     enforceStock = true,
   ) {
     const ids = items.map((i) => i.productId);
-    const products = await this.prisma.product.findMany({ where: { id: { in: ids } } });
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: ids } },
+    });
 
     if (products.length !== new Set(ids).size) {
-      throw new BadRequestException('Your basket contains an item that no longer exists');
+      throw new BadRequestException(
+        'Your basket contains an item that no longer exists',
+      );
     }
 
     const byId = new Map(products.map((p) => [p.id, p]));
@@ -63,7 +80,9 @@ export class OrdersService {
       const product = byId.get(line.productId);
       if (!product) throw new BadRequestException('Unknown product in basket');
       if (enforceStock && product.stock < line.quantity) {
-        throw new BadRequestException(`${product.title} only has ${product.stock} left`);
+        throw new BadRequestException(
+          `${product.title} only has ${product.stock} left`,
+        );
       }
     }
 
@@ -103,7 +122,11 @@ export class OrdersService {
   }
 
   async create(userId: number, dto: CreateOrderDto) {
-    const { byId, totals } = await this.priceBasket(userId, dto.items, dto.couponCode);
+    const { byId, totals } = await this.priceBasket(
+      userId,
+      dto.items,
+      dto.couponCode,
+    );
 
     return this.prisma.$transaction(async (tx) => {
       const address = await tx.address.create({
@@ -164,7 +187,9 @@ export class OrdersService {
 
         if (taken.count === 0) {
           const title = byId.get(line.productId)?.title ?? 'An item';
-          throw new BadRequestException(`${title} sold out while you were checking out`);
+          throw new BadRequestException(
+            `${title} sold out while you were checking out`,
+          );
         }
       }
 
@@ -205,7 +230,10 @@ export class OrdersService {
    * by the pricing rules, which keeps "no such coupon" and "already used" from
    * needing different handling here.
    */
-  private async mayRedeem(userId: number, code?: string | null): Promise<boolean> {
+  private async mayRedeem(
+    userId: number,
+    code?: string | null,
+  ): Promise<boolean> {
     const coupon = findCoupon(code);
     if (!coupon || coupon.redemption === 'unlimited') return true;
 
@@ -217,7 +245,11 @@ export class OrdersService {
     }
 
     const used = await this.prisma.order.count({
-      where: { userId, couponCode: coupon.code, status: { not: OrderStatus.CANCELLED } },
+      where: {
+        userId,
+        couponCode: coupon.code,
+        status: { not: OrderStatus.CANCELLED },
+      },
     });
     return used === 0;
   }
@@ -232,10 +264,14 @@ export class OrdersService {
    */
   async checkCoupon(userId: number, code: string, subtotal: number) {
     const coupon = findCoupon(code);
-    if (!coupon) return { ok: false as const, reason: "That code isn't recognised" };
+    if (!coupon)
+      return { ok: false as const, reason: "That code isn't recognised" };
 
     if (coupon.minSpend != null && subtotal < coupon.minSpend) {
-      return { ok: false as const, reason: `Spend $${coupon.minSpend.toFixed(2)} to use this code` };
+      return {
+        ok: false as const,
+        reason: `Spend $${coupon.minSpend.toFixed(2)} to use this code`,
+      };
     }
 
     if (!(await this.mayRedeem(userId, coupon.code))) {
@@ -249,7 +285,12 @@ export class OrdersService {
     }
 
     const totals = priceOrder(subtotal, coupon.code, true);
-    return { ok: true as const, code: coupon.code, description: coupon.description, discount: totals.discount };
+    return {
+      ok: true as const,
+      code: coupon.code,
+      description: coupon.description,
+      discount: totals.discount,
+    };
   }
 
   /** A customer's own orders, newest first. */
@@ -274,7 +315,10 @@ export class OrdersService {
    * order ids cannot be walked to read other people's addresses.
    */
   async findOne(id: number, userId: number, role: Role) {
-    const order = await this.prisma.order.findUnique({ where: { id }, include: withDetail });
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      include: withDetail,
+    });
     if (!order) throw new NotFoundException(`Order ${id} not found`);
     if (role !== Role.ADMIN && order.userId !== userId) {
       throw new NotFoundException(`Order ${id} not found`);
@@ -288,7 +332,10 @@ export class OrdersService {
 
     /* Cancelling releases the stock the order was holding, so a cancelled
        order does not quietly keep items out of the shop. */
-    if (status === OrderStatus.CANCELLED && order.status !== OrderStatus.CANCELLED) {
+    if (
+      status === OrderStatus.CANCELLED &&
+      order.status !== OrderStatus.CANCELLED
+    ) {
       return this.prisma.$transaction(async (tx) => {
         const items = await tx.orderItem.findMany({ where: { orderId: id } });
         for (const item of items) {
@@ -297,22 +344,40 @@ export class OrdersService {
             data: { stock: { increment: item.quantity } },
           });
         }
-        return tx.order.update({ where: { id }, data: { status }, include: withDetail });
+        return tx.order.update({
+          where: { id },
+          data: { status },
+          include: withDetail,
+        });
       });
     }
 
-    return this.prisma.order.update({ where: { id }, data: { status }, include: withDetail });
+    return this.prisma.order.update({
+      where: { id },
+      data: { status },
+      include: withDetail,
+    });
   }
 
   /** Figures the admin dashboard and reports are built from. */
   async stats() {
     const orders = await this.prisma.order.findMany({
       where: { status: { not: OrderStatus.CANCELLED } },
-      include: { items: { include: { product: { select: { id: true, title: true, departmentSlug: true } } } } },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: { id: true, title: true, departmentSlug: true },
+            },
+          },
+        },
+      },
       orderBy: { placedAt: 'desc' },
     });
 
-    const customers = await this.prisma.user.count({ where: { role: Role.CUSTOMER } });
+    const customers = await this.prisma.user.count({
+      where: { role: Role.CUSTOMER },
+    });
     return { orders, customers };
   }
 }

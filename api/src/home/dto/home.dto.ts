@@ -27,10 +27,16 @@ export class CreateHeroSlideDto {
   @IsOptional() @IsHexColor() accent?: string;
 
   /** Uploaded tile artwork, in display order. Empty strings mean "use the glyph". */
-  @IsOptional() @IsArray() @ArrayMaxSize(4) @IsString({ each: true })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(4)
+  @IsString({ each: true })
   tileImages?: string[];
 
-  @IsOptional() @IsArray() @ArrayMaxSize(4) @IsString({ each: true })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(4)
+  @IsString({ each: true })
   fallbackArt?: string[];
 
   @IsOptional() @IsBoolean() active?: boolean;

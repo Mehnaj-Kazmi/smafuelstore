@@ -1,4 +1,16 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { THROTTLE } from '../throttle.config';
 import { ReviewsService } from './reviews.service';
@@ -7,11 +19,14 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Role } from '../../generated/prisma/client';
 
 /** The signed-in user, as attached by JwtStrategy.validate. */
-type AuthedRequest = { user: { id: number; email: string; role: Role; name: string } };
+type AuthedRequest = {
+  user: { id: number; email: string; role: Role; name: string };
+};
 
 function parseProductId(productId?: string): number {
   const id = Number(productId);
-  if (!productId || !Number.isInteger(id)) throw new BadRequestException('productId is required');
+  if (!productId || !Number.isInteger(id))
+    throw new BadRequestException('productId is required');
   return id;
 }
 

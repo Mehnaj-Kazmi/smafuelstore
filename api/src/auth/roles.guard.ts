@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Role } from '../../generated/prisma/client';
 import { ROLES_KEY } from './roles.decorator';
@@ -14,8 +19,15 @@ export class RolesGuard implements CanActivate {
     ]);
     if (!requiredRoles || requiredRoles.length === 0) return true;
 
-    const { user } = context.switchToHttp().getRequest();
-    if (!user || !requiredRoles.includes(user.role)) {
+    /* Typed rather than read off an `any`, so a rename of the role field is a
+       compile error here instead of a guard that silently stops matching and
+       lets everyone through. */
+    const request = context
+      .switchToHttp()
+      .getRequest<{ user?: { role?: Role } }>();
+    const role = request.user?.role;
+
+    if (!role || !requiredRoles.includes(role)) {
       throw new ForbiddenException('Insufficient role for this action');
     }
     return true;

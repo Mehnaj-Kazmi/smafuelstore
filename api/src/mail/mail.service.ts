@@ -1,7 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
+import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 
-type SendResult = { delivered: boolean; previewUrl?: string };
+/**
+ * `reason` carries why a message did not go, so the caller can say something
+ * specific instead of a generic "email is not set up". "You can only send to
+ * your own address until a domain is verified" is a five-minute fix; "no email
+ * service" sends someone off reconfiguring one that already works.
+ */
+type SendResult = { delivered: boolean; previewUrl?: string; reason?: string };
 
 /**
  * Fail fast rather than hang.
@@ -34,6 +41,29 @@ function appPassword(value?: string): string | undefined {
   return value?.replace(/\s+/g, '') || undefined;
 }
 
+/** Turns Resend's raw refusal into the one sentence that says what to change. */
+function explainResend(raw: string): string {
+  if (raw.includes('only send testing emails to your own email address')) {
+    const own = /\(([^)]+)\)/.exec(raw)?.[1];
+    return (
+      `Resend will only deliver to ${own ?? 'the address you signed up with'} until a sending ` +
+      'domain is verified. Add one at https://resend.com/domains, then set MAIL_FROM to an ' +
+      'address at that domain to reach anyone else.'
+    );
+  }
+  if (raw.includes('domain is not verified')) {
+    return (
+      'The MAIL_FROM domain is not verified with Resend. Use ' +
+      '"onboarding@resend.dev" for testing, or verify your own domain at ' +
+      'https://resend.com/domains.'
+    );
+  }
+  if (raw.includes('401')) {
+    return 'The Resend API key was rejected — check RESEND_API_KEY at https://resend.com/api-keys.';
+  }
+  return raw;
+}
+
 /**
  * Outbound email.
  *
@@ -54,17 +84,19 @@ function appPassword(value?: string): string | undefined {
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
-  private transporter?: nodemailer.Transporter;
+  private transporter?: nodemailer.Transporter<SMTPTransport.SentMessageInfo>;
   private mode: 'resend' | 'smtp' | 'ethereal' | 'log' = 'log';
   /** Set once Ethereal proves unreachable, so it is not tried again. */
   private etherealUnavailable = false;
 
   private get from(): string {
-    return process.env.MAIL_FROM ?? 'SMA Fuel & Market <no-reply@smafuel.market>';
+    return (
+      process.env.MAIL_FROM ?? 'SMA Fuel & Market <no-reply@smafuel.market>'
+    );
   }
 
   /** Built once and reused; Ethereal accounts are created lazily on first send. */
-  private async transport(): Promise<nodemailer.Transporter | null> {
+  private async transport(): Promise<nodemailer.Transporter<SMTPTransport.SentMessageInfo> | null> {
     if (this.transporter) return this.transporter;
 
     if (process.env.SMTP_HOST) {
@@ -92,7 +124,10 @@ export class MailService {
         /* 465 is implicit TLS; everything else upgrades with STARTTLS. */
         secure: port === 465,
         auth: process.env.SMTP_USER
-          ? { user: process.env.SMTP_USER, pass: appPassword(process.env.SMTP_PASS) }
+          ? {
+              user: process.env.SMTP_USER,
+              pass: appPassword(process.env.SMTP_PASS),
+            }
           : undefined,
         ...TIMEOUTS,
       });
@@ -102,7 +137,9 @@ export class MailService {
     }
 
     if (process.env.NODE_ENV === 'production') {
-      this.logger.warn('No SMTP_HOST configured in production — email will only be logged');
+      this.logger.warn(
+        'No SMTP_HOST configured in production — email will only be logged',
+      );
       return null;
     }
 
@@ -120,7 +157,9 @@ export class MailService {
         ...TIMEOUTS,
       });
       this.mode = 'ethereal';
-      this.logger.log('Email via Ethereal test inbox — messages are not delivered to real addresses');
+      this.logger.log(
+        'Email via Ethereal test inbox — messages are not delivered to real addresses',
+      );
       return this.transporter;
     } catch (err) {
       this.etherealUnavailable = true;
@@ -147,7 +186,10 @@ export class MailService {
   ): Promise<SendResult> {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      headers: {
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({
         from: this.from,
         to: [input.to],
@@ -169,31 +211,45 @@ export class MailService {
     throw new Error(`Resend returned ${res.status}: ${detail.slice(0, 300)}`);
   }
 
-  async send(input: { to: string; subject: string; html: string; text: string }): Promise<SendResult> {
+  async send(input: {
+    to: string;
+    subject: string;
+    html: string;
+    text: string;
+  }): Promise<SendResult> {
     const resendKey = process.env.RESEND_API_KEY?.trim();
     if (resendKey) {
       try {
         return await this.sendViaResend(resendKey, input);
       } catch (err) {
+        const reason = err instanceof Error ? err.message : String(err);
         this.logger.error(
-          `Email to ${input.to} failed: ${err instanceof Error ? err.message : err}\n${input.text}`,
+          `Email to ${input.to} failed: ${reason}\n${input.text}`,
         );
-        return { delivered: false };
+        return { delivered: false, reason: explainResend(reason) };
       }
     }
 
     const transporter = await this.transport();
 
     if (!transporter) {
-      this.logger.log(`[email not sent] to=${input.to} subject="${input.subject}"\n${input.text}`);
+      this.logger.log(
+        `[email not sent] to=${input.to} subject="${input.subject}"\n${input.text}`,
+      );
       return { delivered: false };
     }
 
     try {
-      const info = await transporter.sendMail({ from: this.from, ...input });
-      const previewUrl = this.mode === 'ethereal'
-        ? (nodemailer.getTestMessageUrl(info) || undefined)
-        : undefined;
+      /* Typed explicitly: sendMail resolves to `any`, which would spread
+         untyped through the preview-URL lookup below. */
+      const info: SMTPTransport.SentMessageInfo = await transporter.sendMail({
+        from: this.from,
+        ...input,
+      });
+      const previewUrl =
+        this.mode === 'ethereal'
+          ? nodemailer.getTestMessageUrl(info) || undefined
+          : undefined;
 
       this.logger.log(
         `Email sent to ${input.to} (${this.mode})${previewUrl ? ` — preview: ${previewUrl}` : ''}`,
@@ -203,7 +259,9 @@ export class MailService {
       /* Logged rather than thrown: the caller has already done the work the
          customer asked for, and a mail outage should not undo it. */
       const reason = err instanceof Error ? err.message : String(err);
-      this.logger.error(`Email to ${input.to} failed: ${reason}\n${input.text}`);
+      this.logger.error(
+        `Email to ${input.to} failed: ${reason}\n${input.text}`,
+      );
 
       /* A test inbox that cannot be reached is not worth waiting on again —
          every later send would pay the same timeout for the same answer. */
@@ -222,7 +280,11 @@ export class MailService {
   }
 
   /** The reset-link email. Kept here so the wording lives with the transport. */
-  async sendPasswordReset(to: string, name: string, link: string): Promise<SendResult> {
+  async sendPasswordReset(
+    to: string,
+    name: string,
+    link: string,
+  ): Promise<SendResult> {
     const subject = 'Reset your SMA Fuel & Market password';
 
     const text = [

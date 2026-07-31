@@ -7,6 +7,12 @@ import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { Role } from '../../generated/prisma/client';
+
+/** The signed-in user, as attached by JwtStrategy.validate. */
+type AuthedRequest = {
+  user: { id: number; email: string; role: Role; name: string };
+};
 
 @Controller('auth')
 export class AuthController {
@@ -44,7 +50,7 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  me(@Req() req: any) {
+  me(@Req() req: AuthedRequest) {
     return req.user;
   }
 }

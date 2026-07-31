@@ -63,7 +63,11 @@ export class UploadsController {
       .filter((name) => servable.has(extname(name).toLowerCase()))
       .map((name) => {
         const stat = statSync(join(UPLOADS_DIR, name));
-        return { url: `/uploads/${name}`, size: stat.size, modified: stat.mtime.toISOString() };
+        return {
+          url: `/uploads/${name}`,
+          size: stat.size,
+          modified: stat.mtime.toISOString(),
+        };
       })
       .sort((a, b) => b.modified.localeCompare(a.modified));
   }
@@ -88,13 +92,23 @@ export class UploadsController {
       storage: diskStorage({
         destination: UPLOADS_DIR,
         filename: (_req, file, cb) => {
-          const ext = ALLOWED.get(file.mimetype) ?? extname(file.originalname).toLowerCase();
-          cb(null, `${Date.now().toString(36)}-${randomBytes(8).toString('hex')}${ext}`);
+          const ext =
+            ALLOWED.get(file.mimetype) ??
+            extname(file.originalname).toLowerCase();
+          cb(
+            null,
+            `${Date.now().toString(36)}-${randomBytes(8).toString('hex')}${ext}`,
+          );
         },
       }),
       fileFilter: (_req, file, cb) => {
         if (!ALLOWED.has(file.mimetype)) {
-          cb(new BadRequestException('Only JPG, PNG, WebP, AVIF or GIF images are allowed'), false);
+          cb(
+            new BadRequestException(
+              'Only JPG, PNG, WebP, AVIF or GIF images are allowed',
+            ),
+            false,
+          );
           return;
         }
         cb(null, true);

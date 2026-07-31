@@ -5,7 +5,16 @@ import { UpdateDealDto } from './dto/update-deal.dto';
 
 /** Products are returned with each deal so the storefront needs one request. */
 const withProducts = {
-  products: { select: { id: true, title: true, price: true, art: true, hue: true, imageUrl: true } },
+  products: {
+    select: {
+      id: true,
+      title: true,
+      price: true,
+      art: true,
+      hue: true,
+      imageUrl: true,
+    },
+  },
 } as const;
 
 @Injectable()
@@ -21,7 +30,10 @@ export class DealsService {
   }
 
   async findOne(id: number) {
-    const deal = await this.prisma.deal.findUnique({ where: { id }, include: withProducts });
+    const deal = await this.prisma.deal.findUnique({
+      where: { id },
+      include: withProducts,
+    });
     if (!deal) throw new NotFoundException(`Deal ${id} not found`);
     return deal;
   }
@@ -29,7 +41,10 @@ export class DealsService {
   create(dto: CreateDealDto) {
     const { productIds, ...rest } = dto;
     return this.prisma.deal.create({
-      data: { ...rest, products: { connect: productIds.map((id) => ({ id })) } },
+      data: {
+        ...rest,
+        products: { connect: productIds.map((id) => ({ id })) },
+      },
       include: withProducts,
     });
   }
@@ -45,7 +60,9 @@ export class DealsService {
         /* `set` rather than `connect`: an edit replaces the promotion's product
            list outright, so removing an item from the form has to remove it
            from the deal. `connect` alone would only ever add. */
-        ...(productIds ? { products: { set: productIds.map((pid) => ({ id: pid })) } } : {}),
+        ...(productIds
+          ? { products: { set: productIds.map((pid) => ({ id: pid })) } }
+          : {}),
       },
       include: withProducts,
     });

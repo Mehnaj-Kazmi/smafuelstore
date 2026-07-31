@@ -78,7 +78,10 @@ function savingFor(deal: PricingDeal, line: PricingLine): number {
  * finds that will use it. Retail convention is the single best offer, which is
  * also the one the customer expects to have been given.
  */
-export function priceDeals(lines: PricingLine[], deals: PricingDeal[]): DealBreakdown {
+export function priceDeals(
+  lines: PricingLine[],
+  deals: PricingDeal[],
+): DealBreakdown {
   const savings: LineSaving[] = [];
 
   for (const line of lines) {

@@ -30,7 +30,9 @@ export class StoreLocationsController {
     const latNum = Number(lat);
     const lngNum = Number(lng);
     if (Number.isNaN(latNum) || Number.isNaN(lngNum)) {
-      throw new BadRequestException('lat and lng query params are required numbers');
+      throw new BadRequestException(
+        'lat and lng query params are required numbers',
+      );
     }
     return this.storeLocations.nearest(latNum, lngNum);
   }

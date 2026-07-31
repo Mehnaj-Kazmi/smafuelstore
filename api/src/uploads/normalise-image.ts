@@ -46,7 +46,9 @@ export type NormaliseResult = {
 };
 
 function dist(a: number[], b: number[]): number {
-  return Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2);
+  return Math.sqrt(
+    (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2,
+  );
 }
 
 /**
@@ -75,7 +77,8 @@ function dist(a: number[], b: number[]): number {
 export async function normaliseToWhite(file: string): Promise<NormaliseResult> {
   const input = sharp(file, { failOn: 'none' });
   const meta = await input.metadata();
-  if (!meta.width || !meta.height) return { changed: false, reason: 'unreadable' };
+  if (!meta.width || !meta.height)
+    return { changed: false, reason: 'unreadable' };
 
   // Flatten any transparency onto white first, so the fill sees final colours.
   const flattened = await sharp(file, { failOn: 'none' })
@@ -113,7 +116,10 @@ export async function normaliseToWhite(file: string): Promise<NormaliseResult> {
       await writeBack(file, data, info, meta.format);
       return { changed: true, reason: 'flattened transparency onto white' };
     }
-    return { changed: false, reason: 'background is not uniform — left untouched' };
+    return {
+      changed: false,
+      reason: 'background is not uniform — left untouched',
+    };
   }
 
   const backdrop: [number, number, number] = [
@@ -122,11 +128,16 @@ export async function normaliseToWhite(file: string): Promise<NormaliseResult> {
     Math.round(mean[2]),
   ];
 
-  const luma = 0.2126 * backdrop[0] + 0.7152 * backdrop[1] + 0.0722 * backdrop[2];
+  const luma =
+    0.2126 * backdrop[0] + 0.7152 * backdrop[1] + 0.0722 * backdrop[2];
   if (luma >= ALREADY_LIGHT) {
     if (meta.hasAlpha) {
       await writeBack(file, data, info, meta.format);
-      return { changed: true, reason: 'flattened transparency onto white', backdrop };
+      return {
+        changed: true,
+        reason: 'flattened transparency onto white',
+        backdrop,
+      };
     }
     return { changed: false, reason: 'backdrop already white', backdrop };
   }
@@ -147,18 +158,20 @@ export async function normaliseToWhite(file: string): Promise<NormaliseResult> {
     return [orig[i], orig[i + 1], orig[i + 2]];
   };
 
-  const consider = (x: number, y: number, from: number | null) => {
+  /*
+   * Takes no neighbour to compare against, deliberately.
+   *
+   * Judged against the sampled backdrop only, never against the pixel it spread
+   * from. Neighbour-relative growing follows a gradient nicely, but when the
+   * product is a similar colour to its backdrop — a black can on near-black
+   * seamless — each step stays within tolerance of the last and the fill eats
+   * the product, leaving only its lighter labelling behind. Anchoring every
+   * comparison to one colour keeps the fill contained.
+   */
+  const consider = (x: number, y: number) => {
     const idx = y * w + x;
     if (seen[idx]) return;
 
-    /*
-     * Judged against the sampled backdrop only, never against the neighbour it
-     * spread from. Neighbour-relative growing follows a gradient nicely, but
-     * when the product is a similar colour to its backdrop — a black can on
-     * near-black seamless — each step stays within tolerance of the last and
-     * the fill eats the product, leaving only its lighter labelling behind.
-     * Anchoring every comparison to one colour keeps the fill contained.
-     */
     if (dist(colourAt(idx), backdrop) > COLOUR_TOLERANCE) return;
 
     seen[idx] = 1;
@@ -166,12 +179,12 @@ export async function normaliseToWhite(file: string): Promise<NormaliseResult> {
   };
 
   for (let x = 0; x < w; x++) {
-    consider(x, 0, null);
-    consider(x, h - 1, null);
+    consider(x, 0);
+    consider(x, h - 1);
   }
   for (let y = 0; y < h; y++) {
-    consider(0, y, null);
-    consider(w - 1, y, null);
+    consider(0, y);
+    consider(w - 1, y);
   }
 
   let filled = 0;
@@ -185,10 +198,10 @@ export async function normaliseToWhite(file: string): Promise<NormaliseResult> {
     data[i + 2] = 255;
     filled++;
 
-    if (x > 0) consider(x - 1, y, idx);
-    if (x < w - 1) consider(x + 1, y, idx);
-    if (y > 0) consider(x, y - 1, idx);
-    if (y < h - 1) consider(x, y + 1, idx);
+    if (x > 0) consider(x - 1, y);
+    if (x < w - 1) consider(x + 1, y);
+    if (y > 0) consider(x, y - 1);
+    if (y < h - 1) consider(x, y + 1);
   }
 
   const share = filled / (w * h);
@@ -244,9 +257,13 @@ export async function normaliseToWhite(file: string): Promise<NormaliseResult> {
  * The same centre-of-frame guard applies: rather than risk punching holes
  * through a pale product, an unclear photo is left alone.
  */
-export async function cutOutBackdrop(file: string, outFile: string): Promise<NormaliseResult> {
+export async function cutOutBackdrop(
+  file: string,
+  outFile: string,
+): Promise<NormaliseResult> {
   const meta = await sharp(file, { failOn: 'none' }).metadata();
-  if (!meta.width || !meta.height) return { changed: false, reason: 'unreadable' };
+  if (!meta.width || !meta.height)
+    return { changed: false, reason: 'unreadable' };
 
   const { data, info } = await sharp(file, { failOn: 'none' })
     .flatten({ background: '#ffffff' })
@@ -266,10 +283,16 @@ export async function cutOutBackdrop(file: string, outFile: string): Promise<Nor
   for (let x = 0; x < w; x += step) samples.push(at(x, 0), at(x, h - 1));
   for (let y = 0; y < h; y += step) samples.push(at(0, y), at(w - 1, y));
 
-  const mean = [0, 1, 2].map((c) => samples.reduce((s, p) => s + p[c], 0) / samples.length);
-  const spread = samples.reduce((s, p) => s + dist(p, mean), 0) / samples.length;
+  const mean = [0, 1, 2].map(
+    (c) => samples.reduce((s, p) => s + p[c], 0) / samples.length,
+  );
+  const spread =
+    samples.reduce((s, p) => s + dist(p, mean), 0) / samples.length;
   if (spread > MAX_BORDER_SPREAD) {
-    return { changed: false, reason: 'background is not uniform — left untouched' };
+    return {
+      changed: false,
+      reason: 'background is not uniform — left untouched',
+    };
   }
 
   const backdrop: [number, number, number] = [
@@ -286,7 +309,8 @@ export async function cutOutBackdrop(file: string, outFile: string): Promise<Nor
     const idx = y * w + x;
     if (seen[idx]) return;
     const i = idx * channels;
-    if (dist([orig[i], orig[i + 1], orig[i + 2]], backdrop) > COLOUR_TOLERANCE) return;
+    if (dist([orig[i], orig[i + 1], orig[i + 2]], backdrop) > COLOUR_TOLERANCE)
+      return;
     seen[idx] = 1;
     queue.push(idx);
   };
@@ -365,7 +389,11 @@ async function writeBack(
   format?: string,
 ) {
   const pipeline = sharp(data, {
-    raw: { width: info.width, height: info.height, channels: info.channels as 3 | 4 },
+    raw: {
+      width: info.width,
+      height: info.height,
+      channels: info.channels as 3 | 4,
+    },
   });
 
   /* Keep the original container so the stored filename stays truthful. */

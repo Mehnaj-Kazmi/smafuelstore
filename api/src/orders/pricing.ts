@@ -33,8 +33,19 @@ export type Coupon = {
 };
 
 export const COUPONS: Coupon[] = [
-  { code: 'FUEL5', description: '$5 off orders over $30', amountOff: 5, minSpend: 30, redemption: 'once' },
-  { code: 'SNACK10', description: '10% off your order', percentOff: 10, redemption: 'once' },
+  {
+    code: 'FUEL5',
+    description: '$5 off orders over $30',
+    amountOff: 5,
+    minSpend: 30,
+    redemption: 'once',
+  },
+  {
+    code: 'SNACK10',
+    description: '10% off your order',
+    percentOff: 10,
+    redemption: 'once',
+  },
   {
     code: 'FIRST15',
     description: '15% off your first order over $20',
@@ -46,7 +57,9 @@ export const COUPONS: Coupon[] = [
 
 export function findCoupon(code?: string | null): Coupon | undefined {
   if (!code) return undefined;
-  return COUPONS.find((c) => c.code.toLowerCase() === code.trim().toLowerCase());
+  return COUPONS.find(
+    (c) => c.code.toLowerCase() === code.trim().toLowerCase(),
+  );
 }
 
 export type Totals = {
@@ -101,7 +114,10 @@ export function priceOrder(
 
   const coupon = findCoupon(couponCode);
 
-  const usable = coupon && redeemable && (coupon.minSpend == null || subtotal >= coupon.minSpend);
+  const usable =
+    coupon &&
+    redeemable &&
+    (coupon.minSpend == null || subtotal >= coupon.minSpend);
 
   let discount = 0;
   if (usable && coupon) {

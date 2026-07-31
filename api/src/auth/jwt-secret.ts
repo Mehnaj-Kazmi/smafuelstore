@@ -39,7 +39,7 @@ function resolve(): string {
     if (process.env.NODE_ENV === 'production' && secret.length < 32) {
       throw new Error(
         'JWT_SECRET must be at least 32 characters in production. ' +
-          'Generate one with:  node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'base64url\'))"',
+          "Generate one with:  node -e \"console.log(require('crypto').randomBytes(48).toString('base64url'))\"",
       );
     }
     return secret;
@@ -49,7 +49,7 @@ function resolve(): string {
     throw new Error(
       'JWT_SECRET is not set. Refusing to start in production with a default signing key — ' +
         'anyone who knows it could forge an admin session. Generate one with:  ' +
-        'node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'base64url\'))"',
+        "node -e \"console.log(require('crypto').randomBytes(48).toString('base64url'))\"",
     );
   }
 

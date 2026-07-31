@@ -18,7 +18,9 @@ export function haversineMiles(
   const lat1 = toRadians(a.lat);
   const lat2 = toRadians(b.lat);
 
-  const h = Math.sin(dLat / 2) ** 2 + Math.sin(dLng / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.sin(dLng / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
 
   return 2 * EARTH_RADIUS_MILES * Math.asin(Math.sqrt(h));
 }
@@ -28,7 +30,9 @@ export class StoreLocationsService {
   constructor(private prisma: PrismaService) {}
 
   findAll() {
-    return this.prisma.storeLocation.findMany({ include: { fuelPrices: true } });
+    return this.prisma.storeLocation.findMany({
+      include: { fuelPrices: true },
+    });
   }
 
   /**
@@ -48,7 +52,11 @@ export class StoreLocationsService {
       if (fuelPrices) {
         await tx.fuelPrice.deleteMany({ where: { storeId: id } });
         await tx.fuelPrice.createMany({
-          data: fuelPrices.map((f) => ({ storeId: id, grade: f.grade, price: f.price })),
+          data: fuelPrices.map((f) => ({
+            storeId: id,
+            grade: f.grade,
+            price: f.price,
+          })),
         });
       }
       return tx.storeLocation.update({
@@ -60,7 +68,9 @@ export class StoreLocationsService {
   }
 
   async nearest(lat: number, lng: number) {
-    const stores = await this.prisma.storeLocation.findMany({ include: { fuelPrices: true } });
+    const stores = await this.prisma.storeLocation.findMany({
+      include: { fuelPrices: true },
+    });
     if (stores.length === 0) return null;
 
     let best = stores[0];
@@ -74,6 +84,10 @@ export class StoreLocationsService {
       }
     }
 
-    return { store: best, distance: bestDistance, inRange: bestDistance <= best.radiusMiles };
+    return {
+      store: best,
+      distance: bestDistance,
+      inRange: bestDistance <= best.radiusMiles,
+    };
   }
 }

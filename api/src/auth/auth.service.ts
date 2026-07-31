@@ -32,28 +32,48 @@ export class AuthService {
     private mail: MailService,
   ) {}
 
-  private toToken(user: { id: number; email: string; role: string; name: string }) {
+  private toToken(user: {
+    id: number;
+    email: string;
+    role: string;
+    name: string;
+  }) {
     const payload = { sub: user.id, email: user.email, role: user.role };
     return {
       accessToken: this.jwt.sign(payload),
-      user: { id: user.id, email: user.email, name: user.name, role: user.role },
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
     };
   }
 
   async register(dto: RegisterDto) {
-    const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
-    if (existing) throw new ConflictException('An account with this email already exists');
+    const existing = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+    if (existing)
+      throw new ConflictException('An account with this email already exists');
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const user = await this.prisma.user.create({
-      data: { email: dto.email, passwordHash, name: dto.name, phone: dto.phone },
+      data: {
+        email: dto.email,
+        passwordHash,
+        name: dto.name,
+        phone: dto.phone,
+      },
     });
 
     return this.toToken(user);
   }
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
     if (!user) throw new UnauthorizedException('Invalid email or password');
 
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
@@ -78,7 +98,9 @@ export class AuthService {
       message: 'If that email has an account, a reset link is on its way.',
     };
 
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
     if (!user) return generic;
 
     const token = randomBytes(32).toString('hex');
@@ -109,9 +131,21 @@ export class AuthService {
      * can name an email address seize that account, so it is limited to dev.
      * `devPreviewUrl` is the Ethereal message when that transport is in use.
      */
+    /*
+     * The link is only handed back when the email did not go.
+     *
+     * It exists so development is not blocked by unconfigured mail — but once
+     * a message has actually been delivered it is pure noise on the page, and
+     * printing a live reset token that nobody needs is worth avoiding on its
+     * own. Delivered means the inbox is the way in, like it is in production.
+     */
+    if (sent.delivered) return { ...generic, devMailDelivered: true };
+
     return {
       ...generic,
       devResetLink: link,
+      devMailDelivered: false,
+      ...(sent.reason ? { devMailReason: sent.reason } : {}),
       ...(sent.previewUrl ? { devPreviewUrl: sent.previewUrl } : {}),
     };
   }
@@ -125,10 +159,13 @@ export class AuthService {
     /* One message for every failure mode, so the wording cannot tell a caller
        whether a token was wrong, already spent, or merely out of date. */
     const reject = () => {
-      throw new BadRequestException('That reset link is invalid or has expired');
+      throw new BadRequestException(
+        'That reset link is invalid or has expired',
+      );
     };
 
-    if (!record || record.usedAt || record.expiresAt.getTime() < Date.now()) reject();
+    if (!record || record.usedAt || record.expiresAt.getTime() < Date.now())
+      reject();
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
 

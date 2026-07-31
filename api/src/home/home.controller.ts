@@ -49,7 +49,10 @@ export class HomeController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @Patch('hero-slides/:id')
-  updateHeroSlide(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateHeroSlideDto) {
+  updateHeroSlide(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateHeroSlideDto,
+  ) {
     return this.home.updateHeroSlide(id, dto);
   }
 
@@ -70,7 +73,10 @@ export class HomeController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @Patch('showcase-cards/:id')
-  updateShowcaseCard(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateShowcaseCardDto) {
+  updateShowcaseCard(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateShowcaseCardDto,
+  ) {
     return this.home.updateShowcaseCard(id, dto);
   }
 
