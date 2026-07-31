@@ -1,4 +1,5 @@
 import { BadRequestException, Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ReviewsService } from './reviews.service';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -29,6 +30,13 @@ export class ReviewsController {
     return this.reviews.mine(parseProductId(productId), req.user.id);
   }
 
+  /*
+   * One review per product already caps how much a single account can say about
+   * any one item, but nothing stopped it walking the catalogue and rating every
+   * product in a loop. Someone reconsidering a handful of opinions stays well
+   * under this; a script writing the whole shelf does not.
+   */
+  @Throttle({ default: { ttl: 3_600_000, limit: 15 } })
   @UseGuards(JwtAuthGuard)
   @Post()
   upsert(@Req() req: AuthedRequest, @Body() dto: CreateReviewDto) {

@@ -7,8 +7,7 @@ import { useCart } from "@/lib/cart";
 import { useDelivery } from "@/lib/delivery";
 import { useAuth } from "@/lib/auth";
 import { money } from "@/lib/format";
-import { applyCoupon, type Coupon } from "@/lib/deals";
-import { placeOrder as submitOrder } from "@/lib/orders-api";
+import { checkCoupon, placeOrder as submitOrder } from "@/lib/orders-api";
 import ProductImage from "@/components/ProductImage";
 import SmaLogo from "@/components/SmaLogo";
 
@@ -33,7 +32,11 @@ export default function CheckoutPage() {
   const [payment, setPayment] = useState("card");
   const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [couponInput, setCouponInput] = useState("");
-  const [coupon, setCoupon] = useState<{ coupon: Coupon; discount: number } | null>(null);
+  /* Only what the summary renders — the API is the authority on the amount. */
+  const [coupon, setCoupon] = useState<{
+    coupon: { code: string; description: string };
+    discount: number;
+  } | null>(null);
   const [couponError, setCouponError] = useState("");
   const [address, setAddress] = useState({ name: "", line1: "", city: store.city, postcode: "", notes: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -93,14 +96,28 @@ export default function CheckoutPage() {
     );
   }
 
-  function redeem() {
-    const result = applyCoupon(couponInput, subtotal);
-    if (result.ok) {
-      setCoupon({ coupon: result.coupon, discount: result.discount });
-      setCouponError("");
-    } else {
+  /*
+   * Checked by the API, not here.
+   *
+   * Whether a code is still redeemable depends on what this customer has
+   * ordered before, which the browser does not know. Deciding locally showed a
+   * discount the order endpoint would then refuse — the total quietly changed
+   * between the summary and the receipt, which reads as the shop going back on
+   * its word rather than as a coupon being spent.
+   */
+  async function redeem() {
+    setCouponError("");
+    try {
+      const result = await checkCoupon(couponInput, subtotal);
+      if (result.ok) {
+        setCoupon({ coupon: { code: result.code, description: result.description }, discount: result.discount });
+      } else {
+        setCoupon(null);
+        setCouponError(result.reason);
+      }
+    } catch (err) {
       setCoupon(null);
-      setCouponError(result.reason);
+      setCouponError(err instanceof Error ? err.message : "Could not check that code");
     }
   }
 

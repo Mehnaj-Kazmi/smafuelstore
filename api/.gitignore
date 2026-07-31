@@ -3,5 +3,16 @@ node_modules
 .env
 
 /generated/prisma
-uploads/
+
+# Product photographs are tracked deliberately.
+#
+# Every Product.imageUrl points at a file in uploads/, so ignoring it meant a
+# fresh clone rendered a catalogue of broken images with no way to recover the
+# pairing — which is exactly what happened when the database was rebuilt and the
+# only copy of "which photo belongs to which product" was lost. They are shop
+# content, not user data, and 35MB is a fair price for a repository that works
+# after `git clone`. Move them to object storage if the catalogue grows large.
+#
+# uploads-originals/ stays ignored: it holds pre-normalisation copies that
+# nothing references and that can be regenerated.
 uploads-originals/

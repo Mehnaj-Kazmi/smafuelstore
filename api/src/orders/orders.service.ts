@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { OrderStatus, Role } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
-import { priceOrder } from './pricing';
+import { findCoupon, priceOrder } from './pricing';
 
 /** Everything a storefront or admin view needs about an order, in one query. */
 const withDetail = {
@@ -55,7 +55,7 @@ export class OrdersService {
       return sum + Number(product.price) * line.quantity;
     }, 0);
 
-    const totals = priceOrder(subtotal, dto.couponCode);
+    const totals = priceOrder(subtotal, dto.couponCode, await this.mayRedeem(userId, dto.couponCode));
 
     return this.prisma.$transaction(async (tx) => {
       const address = await tx.address.create({
@@ -92,15 +92,91 @@ export class OrdersService {
         include: withDetail,
       });
 
+      /*
+       * The stock check above is friendly, not authoritative.
+       *
+       * It runs before this transaction so the customer gets a useful message
+       * naming the item that fell short. But two orders placed at the same
+       * moment both pass it while stock is still whole, and an unconditional
+       * decrement then takes the same unit twice — sold four of three, stock
+       * left at minus one.
+       *
+       * So the guarantee lives here instead: `updateMany` filtered on there
+       * still being enough left makes the test and the decrement one statement,
+       * which Postgres serialises per row. Losing that race matches no rows,
+       * and throwing rolls back the order rather than shipping what is not on
+       * the shelf.
+       */
       for (const line of dto.items) {
-        await tx.product.update({
-          where: { id: line.productId },
+        const taken = await tx.product.updateMany({
+          where: { id: line.productId, stock: { gte: line.quantity } },
           data: { stock: { decrement: line.quantity } },
         });
+
+        if (taken.count === 0) {
+          const title = byId.get(line.productId)?.title ?? 'An item';
+          throw new BadRequestException(`${title} sold out while you were checking out`);
+        }
       }
 
       return order;
     });
+  }
+
+  /**
+   * Whether this customer may still redeem this code.
+   *
+   * Judged from orders they have actually placed rather than from anything the
+   * browser sends, and cancelled orders are ignored so a cancellation does not
+   * burn a one-time offer. An unknown code answers true and is then discarded
+   * by the pricing rules, which keeps "no such coupon" and "already used" from
+   * needing different handling here.
+   */
+  private async mayRedeem(userId: number, code?: string | null): Promise<boolean> {
+    const coupon = findCoupon(code);
+    if (!coupon || coupon.redemption === 'unlimited') return true;
+
+    if (coupon.redemption === 'first-order') {
+      const previous = await this.prisma.order.count({
+        where: { userId, status: { not: OrderStatus.CANCELLED } },
+      });
+      return previous === 0;
+    }
+
+    const used = await this.prisma.order.count({
+      where: { userId, couponCode: coupon.code, status: { not: OrderStatus.CANCELLED } },
+    });
+    return used === 0;
+  }
+
+  /**
+   * Answers whether this customer can use a code, before they commit to it.
+   *
+   * The storefront cannot work this out on its own — redemption depends on
+   * order history it does not hold — and showing a discount that the order
+   * endpoint then refuses reads as the shop breaking its promise. So checkout
+   * asks here and reports the same answer the order will act on.
+   */
+  async checkCoupon(userId: number, code: string, subtotal: number) {
+    const coupon = findCoupon(code);
+    if (!coupon) return { ok: false as const, reason: "That code isn't recognised" };
+
+    if (coupon.minSpend != null && subtotal < coupon.minSpend) {
+      return { ok: false as const, reason: `Spend $${coupon.minSpend.toFixed(2)} to use this code` };
+    }
+
+    if (!(await this.mayRedeem(userId, coupon.code))) {
+      return {
+        ok: false as const,
+        reason:
+          coupon.redemption === 'first-order'
+            ? 'This code is for your first order'
+            : "You've already used this code",
+      };
+    }
+
+    const totals = priceOrder(subtotal, coupon.code, true);
+    return { ok: true as const, code: coupon.code, description: coupon.description, discount: totals.discount };
   }
 
   /** A customer's own orders, newest first. */

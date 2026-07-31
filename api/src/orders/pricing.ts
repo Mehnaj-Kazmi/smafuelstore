@@ -17,13 +17,37 @@ export type Coupon = {
   percentOff?: number;
   amountOff?: number;
   minSpend?: number;
+  /**
+   * How often one customer may redeem this.
+   *
+   * Nothing used to enforce these, so a code reading "your first order" applied
+   * to every order a customer ever placed — the discount was permanent and the
+   * shop simply sold at a standing 15% off. The rule now travels with the
+   * coupon, and orders.service checks it against real order history.
+   *
+   *   first-order  the customer must have no previous order
+   *   once         one redemption per customer, ever
+   *   unlimited    a standing public offer, redeemable every time
+   */
+  redemption: 'first-order' | 'once' | 'unlimited';
 };
 
 export const COUPONS: Coupon[] = [
-  { code: 'FUEL5', description: '$5 off orders over $30', amountOff: 5, minSpend: 30 },
-  { code: 'SNACK10', description: '10% off your order', percentOff: 10 },
-  { code: 'FIRST15', description: '15% off your first order over $20', percentOff: 15, minSpend: 20 },
+  { code: 'FUEL5', description: '$5 off orders over $30', amountOff: 5, minSpend: 30, redemption: 'once' },
+  { code: 'SNACK10', description: '10% off your order', percentOff: 10, redemption: 'once' },
+  {
+    code: 'FIRST15',
+    description: '15% off your first order over $20',
+    percentOff: 15,
+    minSpend: 20,
+    redemption: 'first-order',
+  },
 ];
+
+export function findCoupon(code?: string | null): Coupon | undefined {
+  if (!code) return undefined;
+  return COUPONS.find((c) => c.code.toLowerCase() === code.trim().toLowerCase());
+}
 
 export type Totals = {
   subtotal: number;
@@ -48,14 +72,21 @@ function money(n: number): number {
  * paid more. Judging on the pre-discount subtotal keeps a coupon from ever
  * costing money.
  */
-export function priceOrder(subtotalRaw: number, couponCode?: string | null): Totals {
+export function priceOrder(
+  subtotalRaw: number,
+  couponCode?: string | null,
+  /**
+   * Whether this customer is still entitled to redeem it, judged from their
+   * order history by the caller. Defaults to true so the pure-pricing tests and
+   * any display-only use keep working; the order path always passes it.
+   */
+  redeemable = true,
+): Totals {
   const subtotal = money(subtotalRaw);
 
-  const coupon = couponCode
-    ? COUPONS.find((c) => c.code.toLowerCase() === couponCode.trim().toLowerCase())
-    : undefined;
+  const coupon = findCoupon(couponCode);
 
-  const usable = coupon && (coupon.minSpend == null || subtotal >= coupon.minSpend);
+  const usable = coupon && redeemable && (coupon.minSpend == null || subtotal >= coupon.minSpend);
 
   let discount = 0;
   if (usable && coupon) {

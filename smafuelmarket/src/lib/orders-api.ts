@@ -105,3 +105,17 @@ export type OrderStats = {
 export function orderStats() {
   return api.get<OrderStats>("/orders/stats");
 }
+
+/**
+ * Whether the signed-in customer can still redeem a code.
+ *
+ * Answered by the API because redemption depends on their order history, and
+ * the answer has to match what placing the order will actually do.
+ */
+export type CouponCheck =
+  | { ok: true; code: string; description: string; discount: number }
+  | { ok: false; reason: string };
+
+export function checkCoupon(code: string, subtotal: number) {
+  return api.post<CouponCheck>("/orders/check-coupon", { code, subtotal });
+}

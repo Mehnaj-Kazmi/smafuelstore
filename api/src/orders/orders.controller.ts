@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { CheckCouponDto } from './dto/check-coupon.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -37,6 +38,13 @@ export class OrdersController {
   @Get('mine')
   findMine(@Req() req: AuthedRequest) {
     return this.orders.findMine(req.user.id);
+  }
+
+  /* Declared before ':id' so "check-coupon" is not read as an order id. */
+  @UseGuards(JwtAuthGuard)
+  @Post('check-coupon')
+  checkCoupon(@Req() req: AuthedRequest, @Body() dto: CheckCouponDto) {
+    return this.orders.checkCoupon(req.user.id, dto.code, dto.subtotal);
   }
 
   // Admin views. Declared before ':id' so "all" and "stats" are not read as ids.
