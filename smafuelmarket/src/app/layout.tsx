@@ -8,12 +8,7 @@ import LocationPrompt from "@/components/LocationPrompt";
 import { CartProvider } from "@/lib/cart";
 import { DeliveryProvider } from "@/lib/delivery";
 import { AuthProvider } from "@/lib/auth";
-import { CatalogProvider } from "@/lib/catalog-context";
-import { getCatalogProducts } from "@/lib/catalog-source";
-import { DealsProvider } from "@/lib/deals-context";
-import { getDeals } from "@/lib/deals-source";
-import { StoreProvider } from "@/lib/store-context";
-import { getStores } from "@/lib/store-source";
+import { LiveDataProvider } from "@/lib/live-data";
 import { ToastProvider } from "@/lib/toast";
 import Toaster from "@/components/Toaster";
 import AdminSwitch from "@/components/AdminSwitch";
@@ -33,17 +28,14 @@ export const viewport: Viewport = {
   themeColor: "#000000",
 };
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  /* Fetched once here and shared with every client component below, so the
-     cart and the server-rendered pages agree on the same catalogue. */
-  const [catalog, deals, stores] = await Promise.all([getCatalogProducts(), getDeals(), getStores()]);
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body id="top">
-        <StoreProvider stores={stores}>
-        <CatalogProvider products={catalog}>
-        <DealsProvider deals={deals}>
+        {/* Fetches the catalogue, promotions and store locations once in the
+            browser and shares them with everything below, so the cart, the
+            product pages and the badges all read the same live data. */}
+        <LiveDataProvider>
         <AuthProvider>
           <DeliveryProvider>
             <ToastProvider>
@@ -63,9 +55,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </ToastProvider>
           </DeliveryProvider>
         </AuthProvider>
-        </DealsProvider>
-        </CatalogProvider>
-        </StoreProvider>
+        </LiveDataProvider>
       </body>
     </html>
   );

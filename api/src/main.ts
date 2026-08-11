@@ -16,6 +16,38 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { UPLOADS_DIR } from './uploads/uploads.constants';
 
+/**
+ * Which browser origins may call this API.
+ *
+ * `FRONTEND_URL` takes a comma-separated list, because one is not always
+ * enough: a second copy of the storefront on another port, or the machine's
+ * network address when the site is being opened from a phone on the same
+ * wifi. A single hardcoded origin meant every one of those was refused by CORS
+ * with nothing in the browser to explain why.
+ *
+ * Development additionally accepts any localhost or private-network origin,
+ * since those can only be reached from the same machine or the same wifi.
+ * Production allows exactly what it is told and nothing else.
+ */
+function allowedOrigins() {
+  const configured = (process.env.FRONTEND_URL ?? 'http://localhost:3000')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+  if (process.env.NODE_ENV === 'production') return configured;
+
+  const local =
+    /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/;
+
+  return (origin: string | undefined, cb: (e: Error | null, ok?: boolean) => void) => {
+    /* No Origin header at all is a same-origin or server-side request — curl,
+       the uploads served to an <img>, a health check — never a cross-site one. */
+    if (!origin) return cb(null, true);
+    cb(null, configured.includes(origin) || local.test(origin));
+  };
+}
+
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
@@ -37,9 +69,7 @@ async function bootstrap() {
     }),
   );
 
-  app.enableCors({
-    origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
-  });
+  app.enableCors({ origin: allowedOrigins() });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.setGlobalPrefix('api');
 

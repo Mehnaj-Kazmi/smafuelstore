@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import HeroCarousel from "@/components/HeroCarousel";
 import ShowcaseCard from "@/components/ShowcaseCard";
@@ -8,9 +10,8 @@ import Ticker from "@/components/Ticker";
 import Reveal from "@/components/Reveal";
 import WordReveal from "@/components/WordReveal";
 import { byDepartment, stockState } from "@/lib/catalog";
-import { getCatalogProducts } from "@/lib/catalog-source";
-import { getHeroSlides, getShowcaseCards } from "@/lib/home-content";
-import { getDepartments } from "@/lib/departments-source";
+import { useCatalog } from "@/lib/catalog-context";
+import { useDepartments, useHeroSlides, useShowcaseCards } from "@/lib/live-data";
 import ProductImage from "@/components/ProductImage";
 import { dealProducts } from "@/lib/deals";
 
@@ -22,13 +23,11 @@ const tickerItems = [
   "Free delivery over $35",
 ];
 
-export default async function HomePage() {
-  const [products, heroSlides, showcaseCards, departments] = await Promise.all([
-    getCatalogProducts(),
-    getHeroSlides(),
-    getShowcaseCards(),
-    getDepartments(),
-  ]);
+export default function HomePage() {
+  const { products } = useCatalog();
+  const heroSlides = useHeroSlides();
+  const showcaseCards = useShowcaseCards();
+  const departments = useDepartments();
 
   /* The first three cards sit beside the fuel panel; anything the admin adds
      beyond that flows into the second grid further down the page. */

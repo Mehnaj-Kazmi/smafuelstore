@@ -1,17 +1,14 @@
+"use client";
+
 import Link from "next/link";
-import type { Metadata } from "next";
 import ProductImage from "@/components/ProductImage";
 import { byDepartment, categoriesIn } from "@/lib/catalog";
-import { getCatalogProducts } from "@/lib/catalog-source";
-import { getDepartments } from "@/lib/departments-source";
+import { useCatalog } from "@/lib/catalog-context";
+import { useDepartments } from "@/lib/live-data";
 
-export const metadata: Metadata = {
-  title: "Departments",
-  description: "Browse every department at SMA Fuel & Market.",
-};
-
-export default async function DepartmentsPage() {
-  const [departments, products] = await Promise.all([getDepartments(), getCatalogProducts()]);
+export default function DepartmentsPage() {
+  const departments = useDepartments();
+  const { products } = useCatalog();
 
   return (
     <div className="mx-auto max-w-[1500px] px-3 py-4">

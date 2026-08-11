@@ -1,6 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import SmaLogo from "./SmaLogo";
-import { getPrimaryStore } from "@/lib/store-source";
+import { usePrimaryStore } from "@/lib/store-context";
 
 const columns = [
   {
@@ -44,8 +46,14 @@ const columns = [
  * automatically (see the sign-in page), and the address can be bookmarked.
  */
 
-export default async function Footer() {
-  const primaryStore = await getPrimaryStore();
+/*
+ * Reads the store from context rather than awaiting the API. As an async
+ * component it would have been rendered once at build time, so the address and
+ * phone number in the footer would keep showing whatever they were on the day the
+ * site was built — and quietly disagree with the contact page beside it.
+ */
+export default function Footer() {
+  const primaryStore = usePrimaryStore();
 
   return (
     <footer className="mt-14 border-t border-line bg-black">

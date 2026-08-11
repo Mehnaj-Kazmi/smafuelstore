@@ -1,9 +1,22 @@
-import Link from "next/link";
-import { getPrimaryStore } from "@/lib/store-source";
+"use client";
 
-/** Today's pump prices — the one card that is about fuel rather than the shop. */
-export default async function FuelPrices() {
-  const primaryStore = await getPrimaryStore();
+import Link from "next/link";
+import { usePrimaryStore } from "@/lib/store-context";
+
+/**
+ * Today's pump prices — the one card that is about fuel rather than the shop.
+ *
+ * Reads the store from context rather than fetching it.
+ *
+ * This was an async component that awaited the API, which was fine while the page
+ * was rendered on a server. Once the home page became a client component this came
+ * with it, and an async *client* component is re-invoked on every render — each
+ * one starting a fresh request. The result was thousands of calls to
+ * /api/store-locations, the rate limiter refusing them, and the page never
+ * rendering at all.
+ */
+export default function FuelPrices() {
+  const primaryStore = usePrimaryStore();
 
   return (
     <section className="card lift relative flex flex-col overflow-hidden p-5">

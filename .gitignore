@@ -17,3 +17,23 @@ yarn-error.log*
 
 # generated
 generated/prisma
+
+# .NET build output
+[Bb]in/
+[Oo]bj/
+
+# The published deployment package, rebuilt by build-deploy.ps1
+publish/
+
+# The storefront copied into the API for serving; a build artefact of out/
+api-dotnet/wwwroot/
+
+# The local MySQL data directory - 200MB of database files, not source
+.mysqldata/
+
+# The PostgreSQL export.
+#
+# It carries real customer email addresses and bcrypt password hashes, which have
+# no business in a repository. Regenerate it when it is needed:
+#   cd api && npx tsx scripts/export-to-mysql.ts
+mysql-import.sql

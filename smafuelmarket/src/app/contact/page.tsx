@@ -1,13 +1,9 @@
-import type { Metadata } from "next";
-import { getStores } from "@/lib/store-source";
+"use client";
 
-export const metadata: Metadata = {
-  title: "Contact & locations",
-  description: "Store address, opening hours, phone number and delivery area.",
-};
+import { useStores } from "@/lib/store-context";
 
-export default async function ContactPage() {
-  const stores = await getStores();
+export default function ContactPage() {
+  const stores = useStores();
   const primaryStore = stores[0];
 
   return (

@@ -1,22 +1,19 @@
+"use client";
+
 import Link from "next/link";
-import type { Metadata } from "next";
 import ProductCard from "@/components/ProductCard";
 import ProductImage from "@/components/ProductImage";
 import { dealKindClass, dealKindLabel, dealProducts, coupons } from "@/lib/deals";
-import { getDeals } from "@/lib/deals-source";
+import { useDeals } from "@/lib/deals-context";
 import { getProduct } from "@/lib/catalog";
-import { getCatalogProducts } from "@/lib/catalog-source";
+import { useCatalog } from "@/lib/catalog-context";
 
-export const metadata: Metadata = {
-  title: "Daily Deals",
-  description: "Flash sales, buy-one-get-one offers and weekend deals at SMA Fuel & Market.",
-};
-
-export default async function DealsPage() {
-  /* Both from the API, so a promotion created or photographed in the admin
-     panel appears here — this page used to render a hardcoded list, which is
-     why uploaded deal artwork never showed up. */
-  const [catalog, deals] = await Promise.all([getCatalogProducts(), getDeals()]);
+export default function DealsPage() {
+  /* Both from the live data fetched in the browser, so a promotion created or
+     photographed in the admin panel appears here — this page used to render a
+     hardcoded list, which is why uploaded deal artwork never showed up. */
+  const { products: catalog } = useCatalog();
+  const deals = useDeals();
   const all = dealProducts(catalog, deals);
 
   return (
